@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.coreymd.parchment</string>
+    <key>CFBundleName</key>
+    <string>Parchment</string>
+    <key>CFBundleDisplayName</key>
+    <string>Parchment</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>Parchment</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024 CoreyMD. All rights reserved.</string>
+    
+    <key>NSMainStoryboardFile</key>
+    <string></string>
+    
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+    
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Markdown Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Default</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>net.daringfireball.markdown</string>
+                <string>public.plain-text</string>
+            </array>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>md</string>
+                <string>markdown</string>
+                <string>mdown</string>
+                <string>mkd</string>
+                <string>mkdown</string>
+                <string>mdwn</string>
+                <string>mdtxt</string>
+                <string>mdtext</string>
+                <string>text</string>
+            </array>
+            <key>CFBundleTypeIconFile</key>
+            <string>DocumentIcon</string>
+        </dict>
+    </array>
+    
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>net.daringfireball.markdown</string>
+            <key>UTTypeDescription</key>
+            <string>Markdown Document</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>md</string>
+                    <string>markdown</string>
+                    <string>mdown</string>
+                    <string>mkd</string>
+                    <string>mkdown</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+    
+    <key>NSSupportsAutomaticTermination</key>
+    <true/>
+    
+    <key>NSSupportsSuddenTermination</key>
+    <true/>
+    
+    <key>LSBackgroundOnly</key>
+    <false/>
+    
+    <key>NSRequiresAquaSystemAppearance</key>
+    <false/>
+    
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Parchment needs to respond to system events to handle file opening.</string>
+    
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Open in Parchment</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>openFile</string>
+            <key>NSPortName</key>
+            <string>Parchment</string>
+            <key>NSSendTypes</key>
+            <array>
+                <string>NSFilenamesPboardType</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

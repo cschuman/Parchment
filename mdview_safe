@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# mdview_safe - Safe mode launcher for Parchment
+# Uses minimal implementation to avoid Touch Bar crashes
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SAFE_EXECUTABLE="$SCRIPT_DIR/Parchment_safe"
+
+# Build safe version if not exists
+if [ ! -f "$SAFE_EXECUTABLE" ]; then
+    echo "Building safe mode viewer..."
+    swiftc -o "$SAFE_EXECUTABLE" \
+        "$SCRIPT_DIR/Sources/Parchment/safe_main.swift" \
+        "$SCRIPT_DIR/Sources/Parchment/App/SafeAppDelegate.swift" \
+        -framework Cocoa \
+        -framework Foundation
+    
+    if [ $? -ne 0 ]; then
+        echo "Build failed"
+        exit 1
+    fi
+fi
+
+# If no arguments, show usage
+if [ $# -eq 0 ]; then
+    echo "Usage: mdview_safe <markdown-file>"
+    echo ""
+    echo "This is a safe mode viewer that bypasses Touch Bar issues."
+    echo "Features are limited but it should work on macOS 15.4 beta."
+    exit 0
+fi
+
+# Convert relative path to absolute
+FILE_PATH="$1"
+if [[ ! "$FILE_PATH" = /* ]]; then
+    FILE_PATH="$(pwd)/$FILE_PATH"
+fi
+
+# Check if file exists
+if [ ! -f "$FILE_PATH" ]; then
+    echo "Error: File not found: $FILE_PATH"
+    exit 1
+fi
+
+echo "Opening in safe mode: $FILE_PATH"
+echo "Press Ctrl+C to exit"
+echo ""
+
+# Launch safe viewer
+exec "$SAFE_EXECUTABLE" "$FILE_PATH"

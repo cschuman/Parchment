@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# mdview - Command-line launcher for Parchment
+# Bypasses GUI initialization issues on macOS 15.4 beta
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_PATH="$SCRIPT_DIR/Parchment.app"
+EXECUTABLE="$APP_PATH/Contents/MacOS/Parchment"
+
+# Build if not exists
+if [ ! -f "$EXECUTABLE" ]; then
+    echo "Building Parchment..."
+    "$SCRIPT_DIR/build_app_debug.sh"
+fi
+
+# Check if executable exists
+if [ ! -f "$EXECUTABLE" ]; then
+    echo "Error: Parchment executable not found at $EXECUTABLE"
+    exit 1
+fi
+
+# Disable Touch Bar completely
+export NSApplicationTouchBarEnabled=false
+export NSWindowAllowsAutomaticWindowTabbing=NO
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+
+# If no arguments, show usage
+if [ $# -eq 0 ]; then
+    echo "Usage: mdview <markdown-file>"
+    echo "       mdview test.md"
+    echo ""
+    echo "This launcher bypasses Touch Bar initialization issues."
+    exit 0
+fi
+
+# Convert relative path to absolute
+FILE_PATH="$1"
+if [[ ! "$FILE_PATH" = /* ]]; then
+    FILE_PATH="$(pwd)/$FILE_PATH"
+fi
+
+# Check if file exists
+if [ ! -f "$FILE_PATH" ]; then
+    echo "Error: File not found: $FILE_PATH"
+    exit 1
+fi
+
+echo "Opening: $FILE_PATH"
+echo "Note: If the app crashes, check Console.app for crash reports"
+echo ""
+
+# Launch with file argument
+exec "$EXECUTABLE" "$FILE_PATH" 2>&1
