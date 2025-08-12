@@ -37,8 +37,8 @@ A blazingly fast, native macOS markdown viewer with advanced features for power 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/markdownviewer.git
-cd markdownviewer
+git clone https://github.com/cschuman/Parchment.git
+cd Parchment
 ```
 
 2. Build with Swift Package Manager:
@@ -184,7 +184,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 💬 Support
 
-For issues, questions, or suggestions, please [open an issue](https://github.com/yourusername/markdownviewer/issues).
+For issues, questions, or suggestions, please [open an issue](https://github.com/cschuman/Parchment/issues).
 
 ---
 
