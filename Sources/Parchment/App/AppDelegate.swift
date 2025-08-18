@@ -90,12 +90,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(NSMenuItem.separator())
         fileMenu.addItem(NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
         
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: "Edit")
+        editMenuItem.submenu = editMenu
+        
+        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(NSMenuItem(title: "Find...", action: #selector(showFind), keyEquivalent: "f"))
+        editMenu.addItem(NSMenuItem(title: "Find Next", action: #selector(findNext), keyEquivalent: "g"))
+        editMenu.addItem(NSMenuItem(title: "Find Previous", action: #selector(findPrevious), keyEquivalent: "G"))
+        
         let viewMenuItem = NSMenuItem()
         mainMenu.addItem(viewMenuItem)
         let viewMenu = NSMenu(title: "View")
         viewMenuItem.submenu = viewMenu
         
-        viewMenu.addItem(NSMenuItem(title: "Toggle Focus Mode", action: #selector(toggleFocusMode), keyEquivalent: "f"))
+        viewMenu.addItem(NSMenuItem(title: "Toggle Focus Mode", action: #selector(toggleFocusMode), keyEquivalent: ""))
         viewMenu.addItem(NSMenuItem(title: "Toggle Table of Contents", action: #selector(toggleTOC), keyEquivalent: "t"))
         viewMenu.addItem(NSMenuItem(title: "Show Reading Statistics", action: #selector(showStatistics), keyEquivalent: "/"))
         viewMenu.addItem(NSMenuItem.separator())
@@ -279,6 +291,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func toggleStatusBar() {
         windowController?.toggleStatusBar()
+    }
+    
+    @objc private func showFind() {
+        windowController?.showFindBar()
+    }
+    
+    @objc private func findNext() {
+        windowController?.findNext()
+    }
+    
+    @objc private func findPrevious() {
+        windowController?.findPrevious()
     }
     
     @objc private func exportAsPDF() {

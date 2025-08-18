@@ -1,34 +1,30 @@
-# Test Markdown File
+# Test Document
 
-This is a test file for the Parchment application.
+This is a test document for testing the search functionality.
 
 ## Features
 
-- **Bold text**
-- *Italic text*
-- `Code snippets`
+- **Search**: Find text in the document
+- **Navigation**: Use keyboard shortcuts
+- **Highlighting**: Visual feedback for matches
 
-### Code Block
+## Code Example
 
 ```swift
-func hello() {
-    print("Hello, Parchment\!")
+func search(for text: String) {
+    // Search implementation
+    print("Searching for: \(text)")
 }
 ```
 
-## Table Example
+## More Content
 
-| Feature | Status |
-|---------|--------|
-| Virtual Scrolling | ✅ |
-| Theme Support | ✅ |
-| Plugin System | ✅ |
+The search feature should find all occurrences of text.
+It should highlight matches and allow navigation between them.
+Using Cmd+F opens the search bar.
+Using Cmd+G goes to the next match.
+Using Cmd+Shift+G goes to the previous match.
 
-## Links
+## Conclusion
 
-[Parchment Documentation](https://example.com)
-
----
-
-End of test file.
-EOF < /dev/null
+Search is a critical feature for any document viewer.

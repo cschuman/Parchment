@@ -11,6 +11,8 @@ class MainWindowController: NSWindowController {
     private var currentDocument: MarkdownDocument?
     private var fileWatcher: FileWatcher?
     private let documentExporter = DocumentExporter()
+    private var findBarView: FindBarView?
+    private var findMatches: [NSRange] = []
     
     convenience init() {
         let window = NSWindow(
@@ -72,7 +74,30 @@ class MainWindowController: NSWindowController {
             statusBarView.setContentHuggingPriority(.required, for: .vertical)
         }
         
-        window?.contentView = contentStackView
+        // Create find bar (initially hidden)
+        findBarView = FindBarView()
+        findBarView?.delegate = self
+        findBarView?.isHidden = true
+        findBarView?.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add find bar above content
+        let mainContainer = NSView()
+        mainContainer.translatesAutoresizingMaskIntoConstraints = false
+        mainContainer.addSubview(findBarView!)
+        mainContainer.addSubview(contentStackView!)
+        
+        window?.contentView = mainContainer
+        
+        NSLayoutConstraint.activate([
+            findBarView!.topAnchor.constraint(equalTo: mainContainer.topAnchor),
+            findBarView!.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
+            findBarView!.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
+            
+            contentStackView!.topAnchor.constraint(equalTo: findBarView!.bottomAnchor),
+            contentStackView!.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
+            contentStackView!.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
+            contentStackView!.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor)
+        ])
         
         // Add drag and drop support
         window?.registerForDraggedTypes([.fileURL])
@@ -453,5 +478,98 @@ extension MainWindowController: StatusBarDelegate {
     
     func updateCacheHitRate(_ rate: Double) {
         statusBarView?.updateCacheHitRate(rate)
+    }
+}
+
+// MARK: - Find Bar Support
+
+extension MainWindowController {
+    func showFindBar() {
+        findBarView?.isHidden = false
+        findBarView?.focusAndSelectAll()
+    }
+    
+    func findNext() {
+        if findBarView?.isHidden == false {
+            (findBarView as? FindBarView)?.findNext()
+        }
+    }
+    
+    func findPrevious() {
+        if findBarView?.isHidden == false {
+            (findBarView as? FindBarView)?.findPrevious()
+        }
+    }
+}
+
+extension MainWindowController: FindBarDelegate {
+    func findBarDidSearch(_ searchText: String, completion: @escaping (Int) -> Void) {
+        guard let textView = markdownViewController?.textView,
+              let textStorage = textView.textStorage else {
+            completion(0)
+            return
+        }
+        
+        // Clear previous highlights
+        findBarClearHighlights()
+        findMatches.removeAll()
+        
+        // Search for all matches
+        let text = textStorage.string as NSString
+        // let searchRange = NSRange(location: 0, length: text.length)
+        var searchStart = 0
+        
+        while searchStart < text.length {
+            let range = text.range(of: searchText, 
+                                  options: [.caseInsensitive], 
+                                  range: NSRange(location: searchStart, length: text.length - searchStart))
+            
+            if range.location != NSNotFound {
+                findMatches.append(range)
+                
+                // Highlight the match
+                textStorage.addAttribute(.backgroundColor, 
+                                        value: NSColor.systemYellow.withAlphaComponent(0.3), 
+                                        range: range)
+                
+                searchStart = range.location + range.length
+            } else {
+                break
+            }
+        }
+        
+        completion(findMatches.count)
+    }
+    
+    func findBarHighlightMatch(at index: Int) {
+        guard index < findMatches.count,
+              let textView = markdownViewController?.textView,
+              let textStorage = textView.textStorage else { return }
+        
+        // Remove current highlight
+        for (i, range) in findMatches.enumerated() {
+            let color = i == index ? 
+                NSColor.systemOrange.withAlphaComponent(0.5) : 
+                NSColor.systemYellow.withAlphaComponent(0.3)
+            textStorage.addAttribute(.backgroundColor, value: color, range: range)
+        }
+        
+        // Scroll to match
+        textView.scrollRangeToVisible(findMatches[index])
+    }
+    
+    func findBarClearHighlights() {
+        guard let textStorage = markdownViewController?.textView.textStorage else { return }
+        
+        for range in findMatches {
+            textStorage.removeAttribute(.backgroundColor, range: range)
+        }
+    }
+    
+    func findBarDidClose() {
+        findBarClearHighlights()
+        findMatches.removeAll()
+        findBarView?.isHidden = true
+        markdownViewController?.textView.window?.makeFirstResponder(markdownViewController?.textView)
     }
 }

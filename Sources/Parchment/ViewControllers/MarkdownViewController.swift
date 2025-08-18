@@ -443,11 +443,7 @@ class MarkdownViewController: NSViewController {
         let previousScrollPosition = scrollView.contentView.bounds.origin
         
         // Re-render the document
-        if isLargeDocument {
-            loadLargeDocument(document)
-        } else {
-            loadNormalDocument(document)
-        }
+        loadNormalDocument(document)
         
         // Apply diff highlighting after rendering
         DispatchQueue.main.async { [weak self] in
@@ -523,7 +519,7 @@ class MarkdownViewController: NSViewController {
     }
     
     private func displayRenderedContent(_ content: NSAttributedString) {
-        print("Parchment: Displaying content with length: \(content.length)")
+        Logger.debug("Displaying content with length: \(content.length)", category: Logger.rendering)
         textView.textStorage?.setAttributedString(content)
         
         // Ensure the text view is sized properly
@@ -667,13 +663,12 @@ class MarkdownViewController: NSViewController {
         let searchRange = NSRange(location: 0, length: textStorage.length)
         var foundRange: NSRange?
         
-        textStorage.enumerateAttribute(.headingLevel, in: searchRange, options: []) { value, range, stop in
-            if let level = value as? Int, level == header.level {
-                let text = textStorage.attributedSubstring(from: range).string
-                if text.contains(header.title) {
-                    foundRange = range
-                    stop.pointee = true
-                }
+        // Search for header text directly
+        let searchString = textStorage.string as NSString
+        searchString.enumerateSubstrings(in: searchRange, options: [.byLines]) { substring, range, _, stop in
+            if let line = substring, line.contains(header.title) {
+                foundRange = range
+                stop.pointee = true
             }
         }
         
