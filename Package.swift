@@ -34,6 +34,9 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "MarkdownKit", package: "swift-markdownkit"),
+            ],
+            resources: [
+                .process("Shaders")
             ]
         ),
         .executableTarget(

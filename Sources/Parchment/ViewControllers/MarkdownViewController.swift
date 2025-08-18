@@ -23,12 +23,9 @@ class MarkdownAttributedStringVisitor {
     }
     
     func convertDocument(_ document: Document) -> NSAttributedString {
-        fputs("DEBUG: convertDocument - starting with \(document.childCount) children\n", stderr)
         for (index, child) in document.children.enumerated() {
-            fputs("DEBUG: Processing child \(index + 1)/\(document.childCount): \(type(of: child))\n", stderr)
             visit(child)
         }
-        fputs("DEBUG: convertDocument - finished, string length: \(attributedString.length)\n", stderr)
         return NSAttributedString(attributedString: attributedString)
     }
     
@@ -251,19 +248,21 @@ class MarkdownViewController: NSViewController {
     
     override init(nibName nibNameOrNil: NSNib.Name?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
-        fputs("MarkdownViewController: init called\n", stderr)
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        fputs("MarkdownViewController: init(coder:) called\n", stderr)
     }
     
     override func loadView() {
-        fputs("MarkdownViewController: loadView called\n", stderr)
         view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         setupViews()
-        setupEnhancedFeatures()  // Initialize all enhanced features
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Setup enhanced features after view hierarchy is complete
+        setupEnhancedFeatures()
     }
     
     private func setupViews() {
@@ -483,14 +482,17 @@ class MarkdownViewController: NSViewController {
     
     
     func loadDocument(_ document: MarkdownDocument) {
-        fputs("MarkdownViewController.loadDocument: Called with document of size \(document.content.count) chars\n", stderr)
         currentDocument = document
+        
+        // Reset focus mode when loading a new document
+        if focusModeEnabled {
+            toggleFocusMode() // This will disable focus mode
+        }
         
         // Check if this is a large document (>1MB or >10k lines)
         let lineCount = document.content.components(separatedBy: .newlines).count
         let byteCount = document.content.utf8.count
         isLargeDocument = lineCount > 10000 || byteCount > 1_000_000
-        fputs("MarkdownViewController.loadDocument: Lines: \(lineCount), Bytes: \(byteCount), IsLarge: \(isLargeDocument)\n", stderr)
         
         if isLargeDocument {
             loadLargeDocument(document)
@@ -500,41 +502,32 @@ class MarkdownViewController: NSViewController {
     }
     
     private func loadNormalDocument(_ document: MarkdownDocument) {
-        fputs("DEBUG: loadNormalDocument - starting\n", stderr)
         
         // Track parse time
         let parseStart = CFAbsoluteTimeGetCurrent()
         
         // Parse with swift-markdown (supports strikethrough, tables, etc.)
         let parsedDoc = Document(parsing: document.content)
-        fputs("DEBUG: Parsed document with \(parsedDoc.childCount) children\n", stderr)
         
         let parseTime = CFAbsoluteTimeGetCurrent() - parseStart
         statusBarDelegate?.updateParseTime(parseTime)
-        fputs("DEBUG: Parse time: \(parseTime)s\n", stderr)
         
         // Track render time
         let renderStart = CFAbsoluteTimeGetCurrent()
         
         // Convert to attributed string synchronously for now
         let visitor = MarkdownAttributedStringVisitor(zoomLevel: zoomLevel)
-        fputs("DEBUG: Created visitor, starting conversion...\n", stderr)
         let attributedString = visitor.convertDocument(parsedDoc)
-        fputs("DEBUG: Conversion complete, attributed string length: \(attributedString.length)\n", stderr)
         
         let renderTime = CFAbsoluteTimeGetCurrent() - renderStart
         statusBarDelegate?.updateRenderTime(renderTime)
-        fputs("DEBUG: Render time: \(renderTime)s\n", stderr)
         
         // Set the attributed string on main thread
-        fputs("DEBUG: Dispatching to main thread...\n", stderr)
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { 
-                fputs("DEBUG: Self is nil in main thread dispatch\n", stderr)
                 return 
             }
             
-            fputs("DEBUG: Setting attributed string on text view...\n", stderr)
             // Set the attributed string
             self.textView.textStorage?.setAttributedString(attributedString)
             
@@ -549,7 +542,6 @@ class MarkdownViewController: NSViewController {
             
             // Force update
             self.textView.needsDisplay = true
-            fputs("DEBUG: Document loaded successfully\n", stderr)
         }
     }
     
@@ -1382,49 +1374,25 @@ class MarkdownViewController: NSViewController {
         // Ensure the text view is sized properly
         textView.sizeToFit()
         
-        if focusModeEnabled {
-            applyFocusMode()
-        }
+        // Focus mode is now handled by EnhancedFocusMode
     }
     
     
     func toggleFocusMode() {
-        focusModeEnabled.toggle()
+        // Use the enhanced focus mode instead of the old implementation
+        toggleEnhancedFocusMode()
         
+        // Update typewriter scrolling based on focus state
         if focusModeEnabled {
             typewriterScrollingEnabled = true
-            applyFocusMode()
             enableTypewriterScrolling()
-            AnimationEngine.animateFocusMode(enabled: true, in: textView)
         } else {
             typewriterScrollingEnabled = false
-            removeFocusMode()
             disableTypewriterScrolling()
-            AnimationEngine.animateFocusMode(enabled: false, in: textView)
         }
     }
     
-    private func applyFocusMode() {
-        guard let textStorage = textView.textStorage else { return }
-        
-        let visibleRect = scrollView.contentView.visibleRect
-        let glyphRange = textView.layoutManager?.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer!)
-        let characterRange = textView.layoutManager?.characterRange(forGlyphRange: glyphRange ?? NSRange(), actualGlyphRange: nil)
-        
-        let fullRange = NSRange(location: 0, length: textStorage.length)
-        textStorage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: fullRange)
-        
-        if let range = characterRange {
-            let paragraphRange = textStorage.mutableString.paragraphRange(for: range)
-            textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: paragraphRange)
-        }
-    }
-    
-    private func removeFocusMode() {
-        guard let textStorage = textView.textStorage else { return }
-        let fullRange = NSRange(location: 0, length: textStorage.length)
-        textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: fullRange)
-    }
+    // Old focus mode implementation removed - now using EnhancedFocusMode
     
     // MARK: - Typewriter Scrolling
     
@@ -1602,9 +1570,7 @@ class MarkdownViewController: NSViewController {
     @objc private func scrollViewDidScroll(_ notification: Notification) {
         updateVisibleRange()
         
-        if focusModeEnabled {
-            applyFocusMode()
-        }
+        // Focus mode updates are handled by EnhancedFocusMode
         
         // Re-render visible content for large documents
         if isLargeDocument, let document = currentDocument {

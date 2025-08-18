@@ -62,6 +62,14 @@ extension MarkdownViewController {
     func applyTypographyMode(_ mode: AdaptiveTypographyEngine.ReadingMode) {
         guard let textStorage = textView.textStorage else { return }
         
+        // Disable focus mode first if it's enabled
+        if focusModeEnabled {
+            if let focusMode = objc_getAssociatedObject(self, &AssociatedKeys.focusMode) as? EnhancedFocusMode {
+                focusMode.disable()
+                focusModeEnabled = false
+            }
+        }
+        
         // Show mode indicator
         showModeIndicator(for: mode)
         
@@ -74,12 +82,15 @@ extension MarkdownViewController {
             objc_setAssociatedObject(self, &AssociatedKeys.originalAttributedString, originalAttributedString, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
         
+        // Always reset background colors first
+        textView.backgroundColor = NSColor.textBackgroundColor
+        scrollView.backgroundColor = NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)
+        
         // If switching back to normal, restore original
         if mode == .normal {
             if let original = originalAttributedString {
                 textStorage.setAttributedString(original)
             }
-            textView.backgroundColor = NSColor.textBackgroundColor
             textView.needsDisplay = true
             // Clear the stored original
             objc_setAssociatedObject(self, &AssociatedKeys.originalAttributedString, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -96,6 +107,10 @@ extension MarkdownViewController {
         
         // Apply mode-specific modifications
         textStorage.beginEditing()
+        
+        // First pass: Reset all text to default colors
+        textStorage.removeAttribute(.foregroundColor, range: NSRange(location: 0, length: textStorage.length))
+        textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: NSRange(location: 0, length: textStorage.length))
         
         textStorage.enumerateAttributes(in: NSRange(location: 0, length: textStorage.length), options: []) { attributes, range, _ in
             var updatedAttributes = attributes
@@ -114,13 +129,16 @@ extension MarkdownViewController {
                 textView.backgroundColor = NSColor.textBackgroundColor
                 
             case .focus:
+                // "Focus" reading mode - larger text with better spacing (not to be confused with focus mode feature)
                 let newSize = currentFont.pointSize * 1.15
                 updatedAttributes[.font] = NSFont.systemFont(ofSize: newSize, weight: symbolicTraits.contains(.bold) ? .bold : .medium)
+                updatedAttributes[.foregroundColor] = NSColor.labelColor
                 if let paragraphStyle = updatedAttributes[.paragraphStyle] as? NSMutableParagraphStyle {
                     paragraphStyle.lineSpacing = 8
                 } else {
                     updatedAttributes[.paragraphStyle] = createParagraphStyle(lineSpacing: 8)
                 }
+                // Keep default background color
                 
             case .speed:
                 let newSize = currentFont.pointSize * 1.3
@@ -141,6 +159,7 @@ extension MarkdownViewController {
                     updatedAttributes[.foregroundColor] = NSColor(calibratedRed: 0.9, green: 0.9, blue: 0.85, alpha: 1.0)
                 }
                 textView.backgroundColor = NSColor(calibratedRed: 0.08, green: 0.08, blue: 0.1, alpha: 1.0)
+                scrollView.backgroundColor = NSColor(calibratedRed: 0.08, green: 0.08, blue: 0.1, alpha: 1.0)
                 
             case .paper:
                 let newSize = currentFont.pointSize * 1.05
@@ -153,6 +172,7 @@ extension MarkdownViewController {
                     updatedAttributes[.foregroundColor] = NSColor(calibratedRed: 0.2, green: 0.15, blue: 0.1, alpha: 1.0)
                 }
                 textView.backgroundColor = NSColor(calibratedRed: 0.98, green: 0.96, blue: 0.92, alpha: 1.0)
+                scrollView.backgroundColor = NSColor(calibratedRed: 0.98, green: 0.96, blue: 0.92, alpha: 1.0)
                 
             case .bionic:
                 // Keep existing font but we'll apply bionic reading separately
@@ -178,6 +198,7 @@ extension MarkdownViewController {
                     updatedAttributes[.foregroundColor] = NSColor(calibratedRed: 0.1, green: 0.1, blue: 0.3, alpha: 1.0)
                 }
                 textView.backgroundColor = NSColor(calibratedRed: 1.0, green: 0.98, blue: 0.9, alpha: 1.0)
+                scrollView.backgroundColor = NSColor(calibratedRed: 1.0, green: 0.98, blue: 0.9, alpha: 1.0)
             }
             
             textStorage.setAttributes(updatedAttributes, range: range)
@@ -188,7 +209,10 @@ extension MarkdownViewController {
         }
         
         textStorage.endEditing()
-        textView.needsDisplay = true
+        
+        // Force the text view to update its display
+        textView.setNeedsDisplay(textView.bounds)
+        textView.displayIfNeeded()
     }
     
     private func createParagraphStyle(lineSpacing: CGFloat) -> NSParagraphStyle {
@@ -201,26 +225,25 @@ extension MarkdownViewController {
     private func applyBionicReading(to textStorage: NSTextStorage) {
         // Bionic Reading: A technique that bolds the first part of each word
         // to create "artificial fixation points" that help the brain process text faster
-        // Research suggests it can improve reading speed and comprehension
         
-        let text = textStorage.string
-        let words = text.components(separatedBy: .whitespacesAndNewlines)
-        var location = 0
+        let text = textStorage.string as NSString
+        let pattern = "\\b\\w+"
         
-        for word in words {
-            if !word.isEmpty {
-                let wordRange = (text as NSString).range(of: word, options: [], range: NSRange(location: location, length: text.count - location))
-                if wordRange.location != NSNotFound {
-                    // Bold approximately 40-50% of each word for optimal effect
-                    let boldLength = max(1, Int(Double(word.count) * 0.45))
-                    let boldRange = NSRange(location: wordRange.location, length: boldLength)
-                    
-                    // Get existing font and make it bold
-                    if let existingFont = textStorage.attribute(.font, at: wordRange.location, effectiveRange: nil) as? NSFont {
-                        let boldFont = NSFontManager.shared.convert(existingFont, toHaveTrait: .boldFontMask)
-                        textStorage.addAttribute(.font, value: boldFont, range: boldRange)
-                    }
-                    location = wordRange.location + wordRange.length
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
+        
+        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
+        
+        for match in matches {
+            let wordRange = match.range
+            if wordRange.length > 0 {
+                // Bold approximately 40-50% of each word for optimal effect
+                let boldLength = max(1, Int(Double(wordRange.length) * 0.45))
+                let boldRange = NSRange(location: wordRange.location, length: boldLength)
+                
+                // Get existing font and make it bold
+                if let existingFont = textStorage.attribute(.font, at: wordRange.location, effectiveRange: nil) as? NSFont {
+                    let boldFont = NSFontManager.shared.convert(existingFont, toHaveTrait: .boldFontMask)
+                    textStorage.addAttribute(.font, value: boldFont, range: boldRange)
                 }
             }
         }

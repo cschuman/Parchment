@@ -6,7 +6,6 @@ class SafeAppDelegate: NSObject, NSApplicationDelegate {
     var textView: NSTextView?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        fputs("SafeAppDelegate: Starting safe mode\n", stderr)
         
         // Create window without any Touch Bar or advanced features
         window = NSWindow(
@@ -54,7 +53,6 @@ class SafeAppDelegate: NSObject, NSApplicationDelegate {
             absolutePath = FileManager.default.currentDirectoryPath + "/" + path
         }
         
-        fputs("SafeAppDelegate: Loading file: \(absolutePath)\n", stderr)
         
         do {
             let content = try String(contentsOfFile: absolutePath, encoding: .utf8)
@@ -94,7 +92,6 @@ class SafeAppDelegate: NSObject, NSApplicationDelegate {
             
         } catch {
             textView?.string = "Error loading file: \(error.localizedDescription)"
-            fputs("SafeAppDelegate: Error loading file: \(error)\n", stderr)
         }
     }
     

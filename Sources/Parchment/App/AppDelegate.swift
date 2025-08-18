@@ -8,13 +8,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Write to stderr which is unbuffered
-        fputs("AppDelegate: applicationDidFinishLaunching called\n", stderr)
         
         // Register custom fonts
         FontManager.shared.registerCustomFonts()
         
         // Initialize plugin manager early
-        fputs("AppDelegate: Loading plugins\n", stderr)
         PluginManager.shared.loadAllPlugins()
         
         setupMenuBar()
@@ -22,13 +20,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         loadRecentDocuments()
         
         // Always show window first
-        fputs("AppDelegate: Calling showWelcomeWindow\n", stderr)
         showWelcomeWindow()
         
         // Then load file if provided
         if ProcessInfo.processInfo.arguments.count > 1 {
             let path = ProcessInfo.processInfo.arguments[1]
-            fputs("AppDelegate: Got file argument: \(path)\n", stderr)
             
             // Make path absolute if it's relative
             let absolutePath: String
@@ -40,11 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             // Load the document after window is shown
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                fputs("AppDelegate: Loading document\n", stderr)
-                fputs("AppDelegate: Absolute path: \(absolutePath)\n", stderr)
-                fputs("AppDelegate: About to call openDocument\n", stderr)
                 self?.openDocument(at: URL(fileURLWithPath: absolutePath))
-                fputs("AppDelegate: openDocument call completed\n", stderr)
             }
         }
         
@@ -87,8 +79,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenuItem.submenu = fileMenu
         
         fileMenu.addItem(NSMenuItem(title: "Open...", action: #selector(openDocument as () -> Void), keyEquivalent: "o"))
-        fileMenu.addItem(NSMenuItem(title: "Open with Browser...", action: #selector(openWithBrowser), keyEquivalent: "O"))
-        fileMenu.addItem(NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: ""))
+        
+        // Open Recent submenu
+        let openRecentItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
+        let openRecentMenu = NSMenu(title: "Open Recent")
+        openRecentItem.submenu = openRecentMenu
+        fileMenu.addItem(openRecentItem)
+        updateOpenRecentMenu(openRecentMenu)
         fileMenu.addItem(NSMenuItem.separator())
         fileMenu.addItem(NSMenuItem(title: "Export as PDF...", action: #selector(exportAsPDF), keyEquivalent: "e"))
         fileMenu.addItem(NSMenuItem(title: "Export as HTML...", action: #selector(exportAsHTML), keyEquivalent: ""))
@@ -112,86 +109,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func showWelcomeWindow() {
-        fputs("AppDelegate: showWelcomeWindow - starting\n", stderr)
         if windowController == nil {
-            fputs("AppDelegate: Creating MainWindowController\n", stderr)
             windowController = MainWindowController()
-            fputs("AppDelegate: MainWindowController created\n", stderr)
         }
-        fputs("AppDelegate: Calling showWindow\n", stderr)
         windowController?.showWindow(nil)
-        fputs("AppDelegate: Calling makeKeyAndOrderFront\n", stderr)
         windowController?.window?.makeKeyAndOrderFront(nil)
-        fputs("AppDelegate: Loading welcome content\n", stderr)
         windowController?.loadWelcomeContent()
-        fputs("AppDelegate: Activating app\n", stderr)
         NSApp.activate(ignoringOtherApps: true)
-        fputs("AppDelegate: showWelcomeWindow - complete\n", stderr)
     }
     
     func openDocument(at url: URL) {
-        fputs("AppDelegate.openDocument: Trying to open document at: \(url.path)\n", stderr)
-        fputs("AppDelegate.openDocument: File exists: \(FileManager.default.fileExists(atPath: url.path))\n", stderr)
         
         guard FileManager.default.fileExists(atPath: url.path) else {
-            fputs("AppDelegate.openDocument: File not found!\n", stderr)
             showError("File not found: \(url.lastPathComponent)")
             return
         }
         
-        fputs("AppDelegate.openDocument: Opening document: \(url.path)\n", stderr)
         
         if windowController == nil {
-            fputs("AppDelegate.openDocument: Creating new MainWindowController\n", stderr)
             windowController = MainWindowController()
         }
         
-        fputs("AppDelegate.openDocument: Calling showWindow\n", stderr)
         windowController?.showWindow(nil)
-        fputs("AppDelegate.openDocument: Calling makeKeyAndOrderFront\n", stderr)
         windowController?.window?.makeKeyAndOrderFront(nil)
-        fputs("AppDelegate.openDocument: Calling loadDocument\n", stderr)
         if let wc = windowController {
-            fputs("AppDelegate.openDocument: windowController exists, calling loadDocument\n", stderr)
             wc.loadDocument(at: url)
         } else {
-            fputs("AppDelegate.openDocument: WARNING - windowController is nil!\n", stderr)
         }
-        fputs("AppDelegate.openDocument: Activating app\n", stderr)
         NSApp.activate(ignoringOtherApps: true)
         
-        fputs("AppDelegate.openDocument: Adding to recent documents\n", stderr)
         addToRecentDocuments(url)
-        fputs("AppDelegate.openDocument: Complete\n", stderr)
     }
     
     @objc private func openDocument() {
-        // Check if user is holding Shift for traditional open dialog
-        if NSEvent.modifierFlags.contains(.shift) {
-            openDocumentWithPanel()
-        } else {
-            openDocumentWithFuzzyFinder()
-        }
-    }
-    
-    private func openDocumentWithFuzzyFinder() {
-        // Show fuzzy finder for quick file switching
-        let fuzzyFinder = FuzzyFileFinderWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
-            styleMask: [.titled, .closable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        
-        fuzzyFinder.onFileSelected = { [weak self] url in
-            self?.openDocument(at: url)
-        }
-        
-        fuzzyFinder.makeKeyAndOrderFront(nil)
-        fuzzyFinder.center()
-    }
-    
-    private func openDocumentWithPanel() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.plainText]
         panel.allowsMultipleSelection = false
@@ -205,11 +155,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.openDocument(at: url)
             }
         }
-    }
-    
-    @objc private func openWithBrowser() {
-        // Always use the standard file browser
-        openDocumentWithPanel()
     }
     
     @objc private func showAbout() {
@@ -367,18 +312,70 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if recentDocuments.count > 10 {
             recentDocuments.removeLast()
         }
+        saveRecentDocuments() // Save immediately when documents are added
+        updateOpenRecentMenu()
+    }
+    
+    private func updateOpenRecentMenu(_ menu: NSMenu? = nil) {
+        let targetMenu = menu ?? findOpenRecentMenu()
+        guard let openRecentMenu = targetMenu else { return }
+        
+        openRecentMenu.removeAllItems()
+        
+        if recentDocuments.isEmpty {
+            let emptyItem = NSMenuItem(title: "No Recent Documents", action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            openRecentMenu.addItem(emptyItem)
+        } else {
+            for (index, url) in recentDocuments.enumerated() {
+                let menuItem = NSMenuItem(
+                    title: url.lastPathComponent,
+                    action: #selector(openRecentDocument(_:)),
+                    keyEquivalent: index < 9 ? "\(index + 1)" : ""
+                )
+                menuItem.representedObject = url
+                menuItem.toolTip = url.path
+                openRecentMenu.addItem(menuItem)
+            }
+            
+            openRecentMenu.addItem(NSMenuItem.separator())
+            openRecentMenu.addItem(NSMenuItem(
+                title: "Clear Menu",
+                action: #selector(clearRecentDocuments),
+                keyEquivalent: ""
+            ))
+        }
+    }
+    
+    private func findOpenRecentMenu() -> NSMenu? {
+        guard let fileMenu = NSApp.mainMenu?.item(withTitle: "File")?.submenu else { return nil }
+        return fileMenu.item(withTitle: "Open Recent")?.submenu
+    }
+    
+    @objc private func openRecentDocument(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        openDocument(at: url)
+    }
+    
+    @objc private func clearRecentDocuments() {
+        recentDocuments.removeAll()
+        saveRecentDocuments()
+        updateOpenRecentMenu()
     }
     
     private func loadRecentDocuments() {
         if let data = UserDefaults.standard.data(forKey: "RecentDocuments"),
            let urls = try? JSONDecoder().decode([URL].self, from: data) {
             recentDocuments = urls
+            updateOpenRecentMenu()
+        } else {
         }
     }
     
     private func saveRecentDocuments() {
         if let data = try? JSONEncoder().encode(recentDocuments) {
             UserDefaults.standard.set(data, forKey: "RecentDocuments")
+            UserDefaults.standard.synchronize() // Force immediate save
         }
     }
     

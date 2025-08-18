@@ -13,26 +13,20 @@ class MainWindowController: NSWindowController {
     private let documentExporter = DocumentExporter()
     
     convenience init() {
-        fputs("MainWindowController: init - starting\n", stderr)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        fputs("MainWindowController: NSWindow created\n", stderr)
         
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.center()
-        fputs("MainWindowController: Window configured\n", stderr)
         
         self.init(window: window)
-        fputs("MainWindowController: super.init called\n", stderr)
         window.toolbar = createToolbar()
-        fputs("MainWindowController: Toolbar created\n", stderr)
         setupViews()
-        fputs("MainWindowController: Views setup complete\n", stderr)
     }
     
     private func setupViews() {
@@ -51,7 +45,6 @@ class MainWindowController: NSWindowController {
         tocViewController?.delegate = self
         
         markdownViewController = MarkdownViewController()
-        fputs("MainWindowController.setupViews: Created MarkdownViewController\n", stderr)
         markdownViewController?.statusBarDelegate = self
         
         if let tocView = tocViewController?.view,
@@ -97,18 +90,14 @@ class MainWindowController: NSWindowController {
     }
     
     func loadDocument(at url: URL) {
-        fputs("MainWindowController: loadDocument(at:) called with \(url.path)\n", stderr)
         print("MainWindowController: loadDocument(at:) called with \(url.path)")
         
         // Use performance optimizer for fast loading
         let loadStart = CFAbsoluteTimeGetCurrent()
         
-        fputs("MainWindowController: Calling PerformanceOptimizer.loadFileOptimized...\n", stderr)
         PerformanceOptimizer.shared.loadFileOptimized(at: url) { [weak self] result in
-            fputs("MainWindowController: PerformanceOptimizer callback received\n", stderr)
             switch result {
             case .success(let optimizedDoc):
-                fputs("MainWindowController: Successfully loaded file\n", stderr)
                 let document = MarkdownDocument(url: url, content: optimizedDoc.content)
                 
                 self?.currentDocument = document
@@ -126,16 +115,10 @@ class MainWindowController: NSWindowController {
                 let totalLoadTime = CFAbsoluteTimeGetCurrent() - loadStart
                 
                 // Log performance
-                fputs("📊 Performance: File loaded in \(Int(totalLoadTime * 1000))ms (Target: <50ms)\n", stderr)
-                fputs("   Parse time: \(Int(optimizedDoc.parseTime * 1000))ms\n", stderr)
-                fputs("   Meets target: \(optimizedDoc.meetsTarget ? "✅" : "❌")\n", stderr)
                 
-                fputs("MainWindowController: Calling markdownViewController.loadDocument...\n", stderr)
                 if let mvc = self?.markdownViewController {
-                    fputs("MainWindowController: markdownViewController exists\n", stderr)
                     mvc.loadDocument(document)
                 } else {
-                    fputs("MainWindowController: WARNING - markdownViewController is nil!\n", stderr)
                 }
                 self?.tocViewController?.updateTableOfContents(for: document)
                 
@@ -380,8 +363,8 @@ extension MainWindowController: NSToolbarDelegate {
         case .focusMode:
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             item.label = "Focus Mode"
-            item.toolTip = "Toggle Focus Mode"
-            item.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Focus Mode")
+            item.toolTip = "Toggle Focus Mode - Dims surrounding text"
+            item.image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "Focus Mode")
             item.action = #selector(toggleFocusMode)
             item.target = self
             return item

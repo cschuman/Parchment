@@ -1,0 +1,9 @@
+main.swift: Starting
+main.swift: Creating AppDelegate
+main.swift: Running app
+AppDelegate: applicationDidFinishLaunching called
+AppDelegate: Calling showWelcomeWindow
+AppDelegate: Got file argument: /Users/corey/Markdown/corey-md-swift/test_table.md
+AppDelegate: Loading document
+2025-08-08 07:43:45.136 MarkdownViewer[90085:21383947] +[IMKClient subclass]: chose IMKClient_Modern
+2025-08-08 07:43:45.136 MarkdownViewer[90085:21383947] +[IMKInputSession subclass]: chose IMKInputSession_Modern
