@@ -13,10 +13,7 @@ class MarkdownViewController: NSViewController {
     internal var typewriterScrollingEnabled = false
     private var zoomLevel: CGFloat = 1.0
     private var statisticsOverlay: StatisticsOverlayView?
-    private var renderingEngine: MarkdownRenderingEngine!
     internal var visibleRange: NSRange = NSRange(location: 0, length: 0)
-    private var virtualScrollManager: VirtualScrollManager!
-    private var viewportTracker: ViewportTracker?
     private var isLargeDocument = false
     private var currentCursorLine: Int = 0
     
@@ -82,9 +79,6 @@ class MarkdownViewController: NSViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
-        renderingEngine = MarkdownRenderingEngine()
-        virtualScrollManager = VirtualScrollManager()
-        viewportTracker = ViewportTracker(scrollView: scrollView)
         
         NotificationCenter.default.addObserver(
             self,
@@ -261,16 +255,8 @@ class MarkdownViewController: NSViewController {
         
         // Focus mode reset removed - simplified
         
-        // Check if this is a large document (>1MB or >10k lines)
-        let lineCount = document.content.components(separatedBy: .newlines).count
-        let byteCount = document.content.utf8.count
-        isLargeDocument = lineCount > 10000 || byteCount > 1_000_000
-        
-        if isLargeDocument {
-            loadLargeDocument(document)
-        } else {
-            loadNormalDocument(document)
-        }
+        // Always use normal loading path - simplified
+        loadNormalDocument(document)
     }
     
     private func loadNormalDocument(_ document: MarkdownDocument) {
@@ -315,56 +301,6 @@ class MarkdownViewController: NSViewController {
             self.textView.needsDisplay = true
         }
     }
-    
-    private func loadLargeDocument(_ document: MarkdownDocument) {
-        // Initialize virtual scrolling
-        virtualScrollManager.prepareDocument(document.content)
-        
-        // Calculate initial visible range
-        let viewportHeight = scrollView.contentView.bounds.height
-        let range = virtualScrollManager.calculateVisibleRange(scrollY: 0, viewportHeight: viewportHeight)
-        
-        // Track parse time for visible portion
-        let parseStart = CFAbsoluteTimeGetCurrent()
-        
-        // Render only visible content
-        let attributedString = virtualScrollManager.renderVisibleContent(
-            document.content,
-            range: range
-        ) { content in
-            // Parse and render this chunk
-            let markdownDoc = Document(parsing: content)
-            let visitor = MarkdownAttributedStringVisitor(zoomLevel: self.zoomLevel)
-            return visitor.convertDocument(markdownDoc)
-        }
-        
-        let parseTime = CFAbsoluteTimeGetCurrent() - parseStart
-        statusBarDelegate?.updateParseTime(parseTime)
-        
-        // Get metrics from virtual scroll manager
-        let metrics = virtualScrollManager.getMetrics()
-        statusBarDelegate?.updateRenderTime(metrics.renderTime)
-        statusBarDelegate?.updateCacheHitRate(metrics.cacheHitRate)
-        
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            self.textView.textStorage?.setAttributedString(attributedString)
-            self.textView.sizeToFit()
-            self.textView.scrollToBeginningOfDocument(nil)
-            self.textView.needsDisplay = true
-            
-            // TOC update removed - simplified
-            
-            // Start prefetching nearby content
-            self.virtualScrollManager.prefetchNearbyChunks(document.content) { content in
-                let markdownDoc = Document(parsing: content)
-                let visitor = MarkdownAttributedStringVisitor(zoomLevel: self.zoomLevel)
-                return visitor.convertDocument(markdownDoc)
-            }
-        }
-    }
-    
     
     private func createImagePlaceholder(size: NSSize, text: String) -> NSImage {
         let image = NSImage(size: size)
@@ -774,36 +710,7 @@ class MarkdownViewController: NSViewController {
     
     @objc private func scrollViewDidScroll(_ notification: Notification) {
         updateVisibleRange()
-        
-        // Focus mode updates are handled by EnhancedFocusMode
-        
-        // Re-render visible content for large documents
-        if isLargeDocument, let document = currentDocument {
-            let scrollY = scrollView.contentView.bounds.origin.y
-            let viewportHeight = scrollView.contentView.bounds.height
-            let range = virtualScrollManager.calculateVisibleRange(scrollY: scrollY, viewportHeight: viewportHeight)
-            
-            // Only re-render if range changed significantly
-            if abs(range.location - visibleRange.location) > 20 || abs(range.length - visibleRange.length) > 20 {
-                let attributedString = virtualScrollManager.renderVisibleContent(
-                    document.content,
-                    range: range
-                ) { content in
-                    let markdownDoc = Document(parsing: content)
-                    let visitor = MarkdownAttributedStringVisitor(zoomLevel: self.zoomLevel)
-                    return visitor.convertDocument(markdownDoc)
-                }
-                
-                DispatchQueue.main.async { [weak self] in
-                    self?.textView.textStorage?.setAttributedString(attributedString)
-                    self?.textView.needsDisplay = true
-                }
-                
-                // Update metrics
-                let metrics = virtualScrollManager.getMetrics()
-                statusBarDelegate?.updateCacheHitRate(metrics.cacheHitRate)
-            }
-        }
+        // Simplified - no special handling for large documents
     }
     
     private func updateVisibleRange() {
