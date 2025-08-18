@@ -115,7 +115,7 @@ class MainWindowController: NSWindowController {
     }
     
     func loadDocument(at url: URL) {
-        print("MainWindowController: loadDocument(at:) called with \(url.path)")
+        Logger.info("Loading document: \(url.path)")
         
         // Use performance optimizer for fast loading
         let loadStart = CFAbsoluteTimeGetCurrent()
@@ -234,7 +234,7 @@ class MainWindowController: NSWindowController {
                 DocumentCache.shared.cacheDocument(newDocument)
             }
         } catch {
-            print("Failed to reload document: \(error)")
+            Logger.error("Failed to reload document: \(error)")
         }
     }
     
@@ -434,15 +434,33 @@ extension MainWindowController: TableOfContentsDelegate {
 
 extension MainWindowController: NSDraggingDestination {
     func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        return .copy
+        // Check if dragged items contain markdown files
+        let pasteboard = sender.draggingPasteboard
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] {
+            for url in urls {
+                if url.pathExtension == "md" || url.pathExtension == "markdown" || url.pathExtension == "txt" {
+                    // Highlight the window to show it can accept the drop
+                    window?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.1)
+                    return .copy
+                }
+            }
+        }
+        return []
+    }
+    
+    func draggingExited(_ sender: NSDraggingInfo?) {
+        // Remove highlight when drag exits
+        window?.backgroundColor = NSColor.windowBackgroundColor
     }
     
     func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        // Remove highlight
+        window?.backgroundColor = NSColor.windowBackgroundColor
         let pasteboard = sender.draggingPasteboard
         
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] {
             for url in urls {
-                if url.pathExtension == "md" || url.pathExtension == "markdown" {
+                if url.pathExtension == "md" || url.pathExtension == "markdown" || url.pathExtension == "txt" {
                     loadDocument(at: url)
                     return true
                 }
@@ -491,13 +509,13 @@ extension MainWindowController {
     
     func findNext() {
         if findBarView?.isHidden == false {
-            (findBarView as? FindBarView)?.findNext()
+            findBarView?.findNext()
         }
     }
     
     func findPrevious() {
         if findBarView?.isHidden == false {
-            (findBarView as? FindBarView)?.findPrevious()
+            findBarView?.findPrevious()
         }
     }
 }

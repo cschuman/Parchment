@@ -1,30 +1,19 @@
-# Test Document
+# Test Document for Features
 
-This is a test document for testing the search functionality.
+## Current Time: Mon Aug 18 19:33:59 EDT 2025
 
-## Features
-
-- **Search**: Find text in the document
-- **Navigation**: Use keyboard shortcuts
-- **Highlighting**: Visual feedback for matches
+Testing the following features:
+1. **Search** - Press Cmd+F to search
+2. **File Watching** - This file will auto-reload when changed
+3. **Drag & Drop** - Drag markdown files onto the window
+4. **Recent Files** - Check File > Open Recent menu
 
 ## Code Example
 
 ```swift
-func search(for text: String) {
-    // Search implementation
-    print("Searching for: \(text)")
+func testFeatures() {
+    print("All features working!")
 }
 ```
 
-## More Content
-
-The search feature should find all occurrences of text.
-It should highlight matches and allow navigation between them.
-Using Cmd+F opens the search bar.
-Using Cmd+G goes to the next match.
-Using Cmd+Shift+G goes to the previous match.
-
-## Conclusion
-
-Search is a critical feature for any document viewer.
+Last updated: Mon Aug 18 19:33:59 EDT 2025
