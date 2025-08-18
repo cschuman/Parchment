@@ -1,6 +1,6 @@
 import Foundation
 import Cocoa
-import MarkdownKit
+import Markdown
 
 /// Manages performance optimizations for fast file loading
 class PerformanceOptimizer {
@@ -20,8 +20,7 @@ class PerformanceOptimizer {
     /// Warm up system caches and preload resources
     private func warmupSystemCaches() {
         DispatchQueue.global(qos: .background).async { [weak self] in
-            // Preload markdown parser
-            _ = ExtendedMarkdownParser.standard
+            // Markdown parser preloading removed - using swift-markdown
             
             // Preload fonts
             _ = NSFont.systemFont(ofSize: 14)
@@ -63,8 +62,8 @@ class PerformanceOptimizer {
                     let initialChunkSize = min(content.count, 50_000)
                     let initialContent = String(content.prefix(initialChunkSize))
                     
-                    let parser = ExtendedMarkdownParser.standard
-                    let document = parser.parse(initialContent)
+                    // Parse using swift-markdown
+                    let document = Document(parsing: initialContent)
                     
                     let parseTime = CFAbsoluteTimeGetCurrent() - parseStart
                     
@@ -163,7 +162,7 @@ class PerformanceOptimizer {
 struct OptimizedDocument {
     let url: URL
     let content: String
-    let initialParsedContent: Block
+    let initialParsedContent: Document
     let metadata: OptimizedDocumentMetadata
     let loadTime: TimeInterval
     let parseTime: TimeInterval
@@ -199,61 +198,6 @@ struct OptimizedDocumentMetadata {
 
 // MARK: - Render Optimization
 
-extension PerformanceOptimizer {
-    
-    /// Optimized rendering with progressive enhancement
-    func renderOptimized(
-        _ document: Block,
-        progressHandler: @escaping (NSAttributedString, Double) -> Void
-    ) {
-        renderQueue.async {
-            let totalBlocks = self.countBlocks(in: document)
-            var processedBlocks = 0
-            
-            let result = NSMutableAttributedString()
-            
-            // Render in chunks with progress updates
-            self.renderBlocks(document, into: result) { chunk in
-                processedBlocks += 1
-                let progress = Double(processedBlocks) / Double(totalBlocks)
-                
-                DispatchQueue.main.async {
-                    progressHandler(chunk, progress)
-                }
-            }
-        }
-    }
-    
-    private func countBlocks(in document: Block) -> Int {
-        // Count total blocks for progress calculation
-        switch document {
-        case .document(let blocks):
-            return blocks.count
-        default:
-            return 1
-        }
-    }
-    
-    private func renderBlocks(
-        _ document: Block,
-        into result: NSMutableAttributedString,
-        chunkHandler: @escaping (NSAttributedString) -> Void
-    ) {
-        // Render blocks incrementally
-        switch document {
-        case .document(let blocks):
-            for block in blocks {
-                let chunk = NSMutableAttributedString()
-                // Render individual block
-                // ... rendering logic ...
-                result.append(chunk)
-                chunkHandler(chunk)
-            }
-        default:
-            break
-        }
-    }
-}
 
 // MARK: - Memory Management
 

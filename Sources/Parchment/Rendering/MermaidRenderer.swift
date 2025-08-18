@@ -1,7 +1,6 @@
 import Foundation
 import Cocoa
 import WebKit
-import MarkdownKit
 
 /// Renders Mermaid diagrams in markdown
 class MermaidRenderer: NSObject {

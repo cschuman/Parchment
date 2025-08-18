@@ -1,6 +1,5 @@
 import Cocoa
 import Markdown
-import MarkdownKit
 import WebKit
 
 // Simple synchronous markdown visitor
@@ -223,8 +222,6 @@ class MarkdownAttributedStringVisitor {
 }
 
 // Type aliases to avoid ambiguity
-typealias MKText = MarkdownKit.Text
-typealias MKAlignment = MarkdownKit.Alignment
 typealias MDText = Markdown.Text
 
 class MarkdownViewController: NSViewController {
@@ -232,13 +229,11 @@ class MarkdownViewController: NSViewController {
     internal var textView: MarkdownTextView!
     private var webView: WKWebView?
     internal var currentDocument: MarkdownDocument?
-    internal var focusModeEnabled = false
     internal var typewriterScrollingEnabled = false
     private var zoomLevel: CGFloat = 1.0
     private var statisticsOverlay: StatisticsOverlayView?
     private var renderingEngine: MarkdownRenderingEngine!
     internal var visibleRange: NSRange = NSRange(location: 0, length: 0)
-    private var wikiLinkParser: WikiLinkParser!
     private var virtualScrollManager: VirtualScrollManager!
     private var viewportTracker: ViewportTracker?
     private var isLargeDocument = false
@@ -307,7 +302,6 @@ class MarkdownViewController: NSViewController {
         ])
         
         renderingEngine = MarkdownRenderingEngine()
-        wikiLinkParser = WikiLinkParser()
         virtualScrollManager = VirtualScrollManager()
         viewportTracker = ViewportTracker(scrollView: scrollView)
         
@@ -484,10 +478,7 @@ class MarkdownViewController: NSViewController {
     func loadDocument(_ document: MarkdownDocument) {
         currentDocument = document
         
-        // Reset focus mode when loading a new document
-        if focusModeEnabled {
-            toggleFocusMode() // This will disable focus mode
-        }
+        // Focus mode reset removed - simplified
         
         // Check if this is a large document (>1MB or >10k lines)
         let lineCount = document.content.components(separatedBy: .newlines).count
@@ -534,8 +525,7 @@ class MarkdownViewController: NSViewController {
             // Ensure text view is sized properly
             self.textView.sizeToFit()
             
-            // Update floating TOC if it exists
-            self.updateFloatingTOC()
+            // TOC update removed - simplified
             
             // Scroll to top
             self.textView.scrollToBeginningOfDocument(nil)
@@ -562,8 +552,7 @@ class MarkdownViewController: NSViewController {
             range: range
         ) { content in
             // Parse and render this chunk
-            let parser = ExtendedMarkdownParser.standard
-            let markdownDoc = parser.parse(content)
+            let markdownDoc = Document(parsing: content)
             let result = NSMutableAttributedString()
             self.renderMarkdownKitDocument(markdownDoc, into: result)
             return result
@@ -585,13 +574,11 @@ class MarkdownViewController: NSViewController {
             self.textView.scrollToBeginningOfDocument(nil)
             self.textView.needsDisplay = true
             
-            // Update floating TOC if it exists
-            self.updateFloatingTOC()
+            // TOC update removed - simplified
             
             // Start prefetching nearby content
             self.virtualScrollManager.prefetchNearbyChunks(document.content) { content in
-                let parser = ExtendedMarkdownParser.standard
-                let markdownDoc = parser.parse(content)
+                let markdownDoc = Document(parsing: content)
                 let result = NSMutableAttributedString()
                 self.renderMarkdownKitDocument(markdownDoc, into: result)
                 return result
@@ -1263,23 +1250,7 @@ class MarkdownViewController: NSViewController {
         return result
     }
     
-    private func processWikiLinks(_ links: [WikiLinkParser.WikiLink], in content: String) {
-        for link in links {
-            if let targetPath = link.targetPath {
-                let linkAttributes: [NSAttributedString.Key: Any] = [
-                    .link: URL(fileURLWithPath: targetPath),
-                    .foregroundColor: NSColor.linkColor,
-                    .underlineStyle: NSUnderlineStyle.single.rawValue,
-                    .cursor: NSCursor.pointingHand
-                ]
-            }
-        }
-    }
     
-    func getBacklinks() -> [WikiLinkParser.Backlink] {
-        guard let url = currentDocument?.url else { return [] }
-        return wikiLinkParser.getBacklinks(for: url)
-    }
     
     func updateDocument(_ document: MarkdownDocument, diff: DiffHighlighter.DiffResult) {
         currentDocument = document
@@ -1377,20 +1348,6 @@ class MarkdownViewController: NSViewController {
         // Focus mode is now handled by EnhancedFocusMode
     }
     
-    
-    func toggleFocusMode() {
-        // Use the enhanced focus mode instead of the old implementation
-        toggleEnhancedFocusMode()
-        
-        // Update typewriter scrolling based on focus state
-        if focusModeEnabled {
-            typewriterScrollingEnabled = true
-            enableTypewriterScrolling()
-        } else {
-            typewriterScrollingEnabled = false
-            disableTypewriterScrolling()
-        }
-    }
     
     // Old focus mode implementation removed - now using EnhancedFocusMode
     
@@ -1584,8 +1541,7 @@ class MarkdownViewController: NSViewController {
                     document.content,
                     range: range
                 ) { content in
-                    let parser = ExtendedMarkdownParser.standard
-                    let markdownDoc = parser.parse(content)
+                    let markdownDoc = Document(parsing: content)
                     let result = NSMutableAttributedString()
                     self.renderMarkdownKitDocument(markdownDoc, into: result)
                     return result

@@ -12,8 +12,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Register custom fonts
         FontManager.shared.registerCustomFonts()
         
-        // Initialize plugin manager early
-        PluginManager.shared.loadAllPlugins()
         
         setupMenuBar()
         setupEnhancedMenus()  // Add enhanced menus for new features
