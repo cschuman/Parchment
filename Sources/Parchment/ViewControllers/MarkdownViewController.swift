@@ -36,6 +36,17 @@ class MarkdownViewController: NSViewController {
         super.viewDidLoad()
         // Setup enhanced features after view hierarchy is complete
         setupEnhancedFeatures()
+        
+        // Listen for preference changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(preferencesChanged),
+            name: .preferencesChanged,
+            object: nil
+        )
+        
+        // Apply initial preferences
+        applyPreferences()
     }
     
     private func setupViews() {
@@ -713,6 +724,58 @@ class MarkdownViewController: NSViewController {
         let glyphRange = textView.layoutManager?.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer!)
         if let characterRange = textView.layoutManager?.characterRange(forGlyphRange: glyphRange ?? NSRange(), actualGlyphRange: nil) {
             visibleRange = characterRange
+        }
+    }
+    
+    @objc private func preferencesChanged() {
+        applyPreferences()
+        if let document = currentDocument {
+            loadDocument(document)
+        }
+    }
+    
+    private func applyPreferences() {
+        // Apply theme
+        let theme = UserDefaults.standard.string(forKey: "theme") ?? "System"
+        applyTheme(theme)
+        
+        // Apply typewriter mode
+        if UserDefaults.standard.bool(forKey: "typewriterMode") {
+            enableTypewriterScrolling()
+        } else {
+            disableTypewriterScrolling()
+        }
+        
+        // Apply focus mode default
+        if UserDefaults.standard.bool(forKey: "focusModeDefault") {
+            // Enable focus mode if set as default
+        }
+    }
+    
+    private func applyTheme(_ theme: String) {
+        switch theme {
+        case "Dark":
+            scrollView.backgroundColor = NSColor(calibratedWhite: 0.1, alpha: 1.0)
+            textView.backgroundColor = NSColor(calibratedWhite: 0.1, alpha: 1.0)
+            textView.textColor = NSColor.white
+        case "High Contrast":
+            scrollView.backgroundColor = NSColor.black
+            textView.backgroundColor = NSColor.black
+            textView.textColor = NSColor.white
+        case "Solarized Light":
+            let bg = NSColor(calibratedRed: 0.99, green: 0.96, blue: 0.89, alpha: 1.0)
+            scrollView.backgroundColor = bg
+            textView.backgroundColor = bg
+            textView.textColor = NSColor(calibratedRed: 0.4, green: 0.48, blue: 0.51, alpha: 1.0)
+        case "Solarized Dark":
+            let bg = NSColor(calibratedRed: 0.0, green: 0.17, blue: 0.21, alpha: 1.0)
+            scrollView.backgroundColor = bg
+            textView.backgroundColor = bg
+            textView.textColor = NSColor(calibratedRed: 0.51, green: 0.58, blue: 0.59, alpha: 1.0)
+        default: // Light/System
+            scrollView.backgroundColor = NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)
+            textView.backgroundColor = NSColor.textBackgroundColor
+            textView.textColor = NSColor.labelColor
         }
     }
     

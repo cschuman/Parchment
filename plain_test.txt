@@ -1,0 +1,22 @@
+# Plain Text Test
+
+This is a plain .txt file that Parchment can also open!
+
+## Markdown Rendering in .txt Files
+
+Even though this is a .txt file, Parchment will:
+- Render **bold** text
+- Show *italic* text  
+- Display bullet points
+- Highlight `code`
+
+### Code Block Test
+
+```python
+def hello():
+    print("Hello from a .txt file!")
+```
+
+This demonstrates that Parchment treats .txt files as markdown.
+
+You can drag this file onto Parchment too!

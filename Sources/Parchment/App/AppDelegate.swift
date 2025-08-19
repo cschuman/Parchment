@@ -3,6 +3,7 @@ import Foundation
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var windowController: MainWindowController?
+    var preferencesWindowController: PreferencesWindowController?
     var recentDocuments: [URL] = []
     var documentCache = DocumentCache()
     
@@ -119,13 +120,46 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func showWelcomeWindow() {
+        Logger.info("Creating window controller")
         if windowController == nil {
             windowController = MainWindowController()
         }
+        Logger.info("Showing window")
         windowController?.showWindow(nil)
         windowController?.window?.makeKeyAndOrderFront(nil)
+        
+        // Make sure window is visible
+        windowController?.window?.makeKey()
+        windowController?.window?.orderFront(nil)
+        windowController?.window?.display()
+        
+        Logger.info("Loading welcome content")
         windowController?.loadWelcomeContent()
+        
+        // Activate the app
         NSApp.activate(ignoringOtherApps: true)
+        NSApp.setActivationPolicy(.regular)
+        
+        Logger.info("Window frame: \(windowController?.window?.frame ?? .zero)")
+        Logger.info("Window is visible: \(windowController?.window?.isVisible ?? false)")
+        
+        // Fallback: Create a simple window if something went wrong
+        if windowController?.window == nil || windowController?.window?.isVisible == false {
+            Logger.error("Window creation failed, creating fallback window")
+            let fallbackWindow = NSWindow(
+                contentRect: NSRect(x: 100, y: 100, width: 800, height: 600),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            fallbackWindow.title = "Parchment"
+            fallbackWindow.center()
+            fallbackWindow.makeKeyAndOrderFront(nil)
+            
+            let label = NSTextField(labelWithString: "Parchment is running but encountered an initialization error.\nPlease use File → Open to open a markdown file.")
+            label.frame = NSRect(x: 20, y: 300, width: 760, height: 50)
+            fallbackWindow.contentView?.addSubview(label)
+        }
     }
     
     func openDocument(at url: URL) {
@@ -261,8 +295,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func showPreferences() {
-        let preferencesWindow = PreferencesWindowController()
-        preferencesWindow.showWindow(nil)
+        if preferencesWindowController == nil {
+            preferencesWindowController = PreferencesWindowController()
+        }
+        preferencesWindowController?.showWindow(nil)
+        preferencesWindowController?.window?.makeKeyAndOrderFront(nil)
     }
     
     @objc private func toggleFocusMode() {

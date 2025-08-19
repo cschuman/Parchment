@@ -14,8 +14,10 @@ public class MarkdownAttributedStringVisitor {
     }
     
     private func setupDefaultAttributes() {
+        let fontSize = CGFloat(UserDefaults.standard.integer(forKey: "fontSize"))
+        let baseFontSize = fontSize > 0 ? fontSize : 14
         currentAttributes = [
-            .font: NSFont.systemFont(ofSize: 14 * zoomLevel),
+            .font: NSFont.systemFont(ofSize: baseFontSize * zoomLevel),
             .foregroundColor: NSColor.labelColor
         ]
     }

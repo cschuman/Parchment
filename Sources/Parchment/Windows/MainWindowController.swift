@@ -34,9 +34,10 @@ class MainWindowController: NSWindowController {
     private func setupViews() {
         // Create main vertical stack view to hold content and status bar
         contentStackView = NSStackView()
-        contentStackView?.orientation = .vertical
-        contentStackView?.spacing = 0
-        contentStackView?.distribution = .fill
+        contentStackView!.orientation = .vertical
+        contentStackView!.spacing = 0
+        contentStackView!.distribution = .fill
+        contentStackView!.translatesAutoresizingMaskIntoConstraints = false
         
         // Create split view for TOC and markdown content
         splitView = NSSplitView()
@@ -117,6 +118,14 @@ class MainWindowController: NSWindowController {
     func loadDocument(at url: URL) {
         Logger.info("Loading document: \(url.path)")
         
+        // Check file size
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+        let isLargeFile = fileSize > 1_000_000 // Show progress for files > 1MB
+        
+        // if isLargeFile {
+        //     window?.contentView?.showProgress(message: "Loading \(url.lastPathComponent)...", determinate: true)
+        // }
+        
         // Use performance optimizer for fast loading
         let loadStart = CFAbsoluteTimeGetCurrent()
         
@@ -151,7 +160,11 @@ class MainWindowController: NSWindowController {
                 
                 DocumentCache.shared.cacheDocument(document)
                 
+                // Hide progress
+                // self?.window?.contentView?.hideProgress()
+                
             case .failure(let error):
+                // self?.window?.contentView?.hideProgress()
                 self?.showError("Failed to load document: \(error.localizedDescription)")
             }
         }
@@ -201,8 +214,10 @@ class MainWindowController: NSWindowController {
         
         // Ensure view controllers are initialized
         if markdownViewController == nil {
-            print("ERROR: markdownViewController is nil!")
-            return
+            Logger.error("ERROR: markdownViewController is nil!")
+            // Try to create it if missing
+            markdownViewController = MarkdownViewController()
+            markdownViewController?.statusBarDelegate = self
         }
         
         markdownViewController?.loadDocument(document)
@@ -210,8 +225,13 @@ class MainWindowController: NSWindowController {
         window?.title = "Welcome"
         
         // Force the window to display
-        window?.display()
-        window?.makeKeyAndOrderFront(nil)
+        if let window = window {
+            window.display()
+            window.makeKeyAndOrderFront(nil)
+            Logger.info("Window shown with frame: \(window.frame)")
+        } else {
+            Logger.error("Window is nil in loadWelcomeContent!")
+        }
     }
     
     func reloadIfNeeded(url: URL) {

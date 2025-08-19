@@ -388,7 +388,7 @@ extension FloatingTOCView: NSOutlineViewDelegate {
 }
 
 class TOCCellView: NSTableCellView {
-    private var progressIndicator: ProgressIndicatorView!
+    private var tocProgress: TOCProgressIndicatorView!
     private var titleLabel: NSTextField!
     private var levelIndicator: NSView!
     
@@ -403,9 +403,9 @@ class TOCCellView: NSTableCellView {
     }
     
     private func setupView() {
-        progressIndicator = ProgressIndicatorView()
-        progressIndicator.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(progressIndicator)
+        tocProgress = TOCProgressIndicatorView()
+        tocProgress.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(tocProgress)
         
         levelIndicator = NSView()
         levelIndicator.wantsLayer = true
@@ -421,12 +421,12 @@ class TOCCellView: NSTableCellView {
         addSubview(titleLabel)
         
         NSLayoutConstraint.activate([
-            progressIndicator.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            progressIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
-            progressIndicator.widthAnchor.constraint(equalToConstant: 20),
-            progressIndicator.heightAnchor.constraint(equalToConstant: 20),
+            tocProgress.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            tocProgress.centerYAnchor.constraint(equalTo: centerYAnchor),
+            tocProgress.widthAnchor.constraint(equalToConstant: 20),
+            tocProgress.heightAnchor.constraint(equalToConstant: 20),
             
-            levelIndicator.leadingAnchor.constraint(equalTo: progressIndicator.trailingAnchor, constant: 8),
+            levelIndicator.leadingAnchor.constraint(equalTo: tocProgress.trailingAnchor, constant: 8),
             levelIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
             levelIndicator.widthAnchor.constraint(equalToConstant: 3),
             levelIndicator.heightAnchor.constraint(equalToConstant: 16),
@@ -447,8 +447,8 @@ class TOCCellView: NSTableCellView {
                                item.isVisible ? NSColor.labelColor : 
                                NSColor.secondaryLabelColor
         
-        progressIndicator.setProgress(item.progress)
-        progressIndicator.isHighlighted = item.isActive
+        tocProgress.setProgress(item.progress)
+        tocProgress.isHighlighted = item.isActive
         
         levelIndicator.alphaValue = CGFloat(1.0 - Double(item.level - 1) * 0.15)
         
@@ -457,7 +457,7 @@ class TOCCellView: NSTableCellView {
     }
 }
 
-class ProgressIndicatorView: NSView {
+class TOCProgressIndicatorView: NSView {
     private var progressLayer: CAShapeLayer!
     private var backgroundLayer: CAShapeLayer!
     private var progress: Double = 0
