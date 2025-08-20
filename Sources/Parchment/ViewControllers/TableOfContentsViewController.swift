@@ -57,11 +57,42 @@ class TableOfContentsViewController: NSViewController {
     }
     
     func updateTableOfContents(for document: MarkdownDocument) {
-        headers = extractHeaders(from: document.content)
-        outlineView.reloadData()
+        // Save current selection
+        let selectedRow = outlineView.selectedRow
+        var selectedHeader: MarkdownHeader?
+        if selectedRow >= 0 {
+            selectedHeader = outlineView.item(atRow: selectedRow) as? MarkdownHeader
+        }
         
-        if !headers.isEmpty {
-            outlineView.expandItem(nil, expandChildren: true)
+        // Update headers
+        let oldHeaders = headers
+        headers = extractHeaders(from: document.content)
+        
+        // Check if structure actually changed
+        let structureChanged = oldHeaders.count != headers.count ||
+            zip(oldHeaders, headers).contains { $0.title != $1.title || $0.level != $1.level }
+        
+        if structureChanged {
+            // Reload the entire outline view
+            outlineView.reloadData()
+            
+            // Expand all items
+            if !headers.isEmpty {
+                outlineView.expandItem(nil, expandChildren: true)
+            }
+            
+            // Try to restore selection
+            if let selectedHeader = selectedHeader {
+                for (index, header) in headers.enumerated() {
+                    if header.title == selectedHeader.title && header.level == selectedHeader.level {
+                        let row = outlineView.row(forItem: header)
+                        if row >= 0 {
+                            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                        }
+                        break
+                    }
+                }
+            }
         }
     }
     

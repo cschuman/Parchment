@@ -450,8 +450,10 @@ class MarkdownViewController: NSViewController {
     func updateDocument(_ document: MarkdownDocument, diff: DiffHighlighter.DiffResult) {
         currentDocument = document
         
-        // Save scroll position
-        let previousScrollPosition = scrollView.contentView.bounds.origin
+        // Save scroll position as percentage of document height
+        let visibleRect = scrollView.contentView.visibleRect
+        let documentHeight = textView.frame.height
+        let scrollPercentage = documentHeight > 0 ? visibleRect.origin.y / documentHeight : 0
         
         // Re-render the document
         loadNormalDocument(document)
@@ -474,8 +476,10 @@ class MarkdownViewController: NSViewController {
                 diff: diff
             )
             
-            // Restore scroll position
-            self.scrollView.contentView.scroll(to: previousScrollPosition)
+            // Restore scroll position based on percentage
+            let newDocumentHeight = self.textView.frame.height
+            let newScrollPosition = NSPoint(x: 0, y: scrollPercentage * newDocumentHeight)
+            self.scrollView.contentView.animator().setBoundsOrigin(newScrollPosition)
             
             // Show notification in status bar
             self.showDiffNotification(added: diff.added.count, modified: diff.modified.count, deleted: diff.deleted.count)

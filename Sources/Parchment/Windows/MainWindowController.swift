@@ -13,6 +13,7 @@ class MainWindowController: NSWindowController {
     private let documentExporter = DocumentExporter()
     private var findBarView: FindBarView?
     private var findMatches: [NSRange] = []
+    private var dropView: DropView?
     
     convenience init() {
         let window = NSWindow(
@@ -25,9 +26,11 @@ class MainWindowController: NSWindowController {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.center()
+        window.collectionBehavior = [.fullScreenPrimary, .managed]
         
         self.init(window: window)
         window.toolbar = createToolbar()
+        window.delegate = self
         setupViews()
     }
     
@@ -81,28 +84,27 @@ class MainWindowController: NSWindowController {
         findBarView?.isHidden = true
         findBarView?.translatesAutoresizingMaskIntoConstraints = false
         
-        // Add find bar above content
-        let mainContainer = NSView()
-        mainContainer.translatesAutoresizingMaskIntoConstraints = false
-        mainContainer.addSubview(findBarView!)
-        mainContainer.addSubview(contentStackView!)
+        // Create drop view as the main container
+        dropView = DropView(frame: .zero)
+        dropView?.dropDelegate = self
+        dropView?.translatesAutoresizingMaskIntoConstraints = false
+        dropView?.wantsLayer = true
         
-        window?.contentView = mainContainer
+        dropView?.addSubview(findBarView!)
+        dropView?.addSubview(contentStackView!)
+        
+        window?.contentView = dropView
         
         NSLayoutConstraint.activate([
-            findBarView!.topAnchor.constraint(equalTo: mainContainer.topAnchor),
-            findBarView!.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
-            findBarView!.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
+            findBarView!.topAnchor.constraint(equalTo: dropView!.topAnchor),
+            findBarView!.leadingAnchor.constraint(equalTo: dropView!.leadingAnchor),
+            findBarView!.trailingAnchor.constraint(equalTo: dropView!.trailingAnchor),
             
             contentStackView!.topAnchor.constraint(equalTo: findBarView!.bottomAnchor),
-            contentStackView!.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
-            contentStackView!.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
-            contentStackView!.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor)
+            contentStackView!.leadingAnchor.constraint(equalTo: dropView!.leadingAnchor),
+            contentStackView!.trailingAnchor.constraint(equalTo: dropView!.trailingAnchor),
+            contentStackView!.bottomAnchor.constraint(equalTo: dropView!.bottomAnchor)
         ])
-        
-        // Add drag and drop support
-        window?.registerForDraggedTypes([.fileURL])
-        window?.contentView?.registerForDraggedTypes([.fileURL])
         
         tocViewController?.view.isHidden = true
     }
@@ -452,42 +454,10 @@ extension MainWindowController: TableOfContentsDelegate {
     }
 }
 
-extension MainWindowController: NSDraggingDestination {
-    func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        // Check if dragged items contain markdown files
-        let pasteboard = sender.draggingPasteboard
-        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] {
-            for url in urls {
-                if url.pathExtension == "md" || url.pathExtension == "markdown" || url.pathExtension == "txt" {
-                    // Highlight the window to show it can accept the drop
-                    window?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.1)
-                    return .copy
-                }
-            }
-        }
-        return []
-    }
-    
-    func draggingExited(_ sender: NSDraggingInfo?) {
-        // Remove highlight when drag exits
-        window?.backgroundColor = NSColor.windowBackgroundColor
-    }
-    
-    func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        // Remove highlight
-        window?.backgroundColor = NSColor.windowBackgroundColor
-        let pasteboard = sender.draggingPasteboard
-        
-        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] {
-            for url in urls {
-                if url.pathExtension == "md" || url.pathExtension == "markdown" || url.pathExtension == "txt" {
-                    loadDocument(at: url)
-                    return true
-                }
-            }
-        }
-        
-        return false
+extension MainWindowController: DropViewDelegate {
+    func dropView(_ dropView: DropView, didReceiveFileURL url: URL) {
+        Logger.info("MainWindowController: Received dropped file: \(url.path)")
+        loadDocument(at: url)
     }
 }
 
@@ -536,6 +506,29 @@ extension MainWindowController {
     func findPrevious() {
         if findBarView?.isHidden == false {
             findBarView?.findPrevious()
+        }
+    }
+}
+
+// MARK: - Window Delegate
+
+extension MainWindowController: NSWindowDelegate {
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        // Ensure proper responder chain
+        window?.makeFirstResponder(markdownViewController?.textView)
+    }
+    
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        // Re-establish first responder after full-screen transition
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.makeFirstResponder(self?.markdownViewController?.textView)
+        }
+    }
+    
+    func windowDidExitFullScreen(_ notification: Notification) {
+        // Restore first responder after exiting full-screen
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.makeFirstResponder(self?.markdownViewController?.textView)
         }
     }
 }
