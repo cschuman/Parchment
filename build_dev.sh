@@ -5,7 +5,13 @@ echo "Building Parchment (debug mode)..."
 # Build in debug mode (faster)
 swift build
 
-# Update the app bundle with the new executable
+# Create app bundle structure if it doesn't exist
+mkdir -p Parchment.app/Contents/{MacOS,Resources}
+
+# Copy Info.plist
+cp Info.plist Parchment.app/Contents/
+
+# Copy executable
 cp .build/debug/Parchment Parchment.app/Contents/MacOS/Parchment
 
 # Copy fonts to Resources
