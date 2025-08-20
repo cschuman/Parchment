@@ -1,0 +1,300 @@
+import Cocoa
+
+/// Protocol defining syntax highlighting capabilities
+protocol SyntaxHighlighting {
+    func highlight(code: String, language: String?, fontSize: CGFloat, theme: Theme) -> NSAttributedString
+}
+
+/// High-performance syntax highlighter for code blocks
+final class CodeSyntaxHighlighter: SyntaxHighlighting {
+    
+    // MARK: - Properties
+    
+    private let defaultFont: NSFont
+    private let cache = NSCache<NSString, NSAttributedString>()
+    
+    // MARK: - Initialization
+    
+    init(defaultFont: NSFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)) {
+        self.defaultFont = defaultFont
+        cache.countLimit = 100 // Limit cache size
+    }
+    
+    // MARK: - Public Interface
+    
+    func highlight(code: String, language: String?, fontSize: CGFloat, theme: Theme) -> NSAttributedString {
+        // Check cache first
+        let cacheKey = "\(code.hashValue)-\(language ?? "")-\(fontSize)-\(theme.name)" as NSString
+        if let cached = cache.object(forKey: cacheKey) {
+            return cached
+        }
+        
+        let result = performHighlighting(code: code, language: language, fontSize: fontSize, theme: theme)
+        cache.setObject(result, forKey: cacheKey)
+        return result
+    }
+    
+    // MARK: - Private Implementation
+    
+    private func performHighlighting(code: String, language: String?, fontSize: CGFloat, theme: Theme) -> NSAttributedString {
+        let baseFont = NSFont.monospacedSystemFont(ofSize: fontSize * 0.9, weight: .regular)
+        let colors = theme.syntaxColors
+        
+        let backgroundAttributes: [NSAttributedString.Key: Any] = [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ]
+        
+        // Apply padding
+        let paddedResult = NSMutableAttributedString()
+        let padding = NSAttributedString(string: "  ", attributes: backgroundAttributes)
+        
+        let lines = code.components(separatedBy: .newlines)
+        for (index, line) in lines.enumerated() {
+            paddedResult.append(padding)
+            
+            if let lang = language?.lowercased(), !lang.isEmpty {
+                let highlightedLine = applySyntaxHighlighting(to: line, language: lang, baseFont: baseFont, colors: colors)
+                paddedResult.append(highlightedLine)
+            } else {
+                paddedResult.append(NSAttributedString(string: line, attributes: backgroundAttributes))
+            }
+            
+            paddedResult.append(padding)
+            if index < lines.count - 1 {
+                paddedResult.append(NSAttributedString(string: "\n", attributes: backgroundAttributes))
+            }
+        }
+        
+        return paddedResult
+    }
+    
+    private func applySyntaxHighlighting(to code: String, language: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let baseAttributes: [NSAttributedString.Key: Any] = [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ]
+        
+        switch language {
+        case "swift":
+            return highlightSwift(code, baseFont: baseFont, colors: colors)
+        case "javascript", "js":
+            return highlightJavaScript(code, baseFont: baseFont, colors: colors)
+        case "python", "py":
+            return highlightPython(code, baseFont: baseFont, colors: colors)
+        case "json":
+            return highlightJSON(code, baseFont: baseFont, colors: colors)
+        case "html", "xml":
+            return highlightHTML(code, baseFont: baseFont, colors: colors)
+        case "css":
+            return highlightCSS(code, baseFont: baseFont, colors: colors)
+        default:
+            return NSAttributedString(string: code, attributes: baseAttributes)
+        }
+    }
+}
+
+// MARK: - Language-Specific Highlighting
+
+extension CodeSyntaxHighlighter {
+    
+    private func highlightSwift(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: code, attributes: [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ])
+        
+        // Keywords
+        let keywords = ["func", "var", "let", "if", "else", "for", "while", "return", "class", "struct", "enum", "protocol", "extension", "import", "private", "public", "internal", "static", "override", "init", "self", "super", "nil", "true", "false", "try", "catch", "throw", "async", "await", "actor"]
+        
+        for keyword in keywords {
+            highlightPattern("\\b\(keyword)\\b", in: result, color: colors.keyword, font: baseFont)
+        }
+        
+        // Types
+        let types = ["String", "Int", "Double", "Float", "Bool", "Array", "Dictionary", "Set", "Optional", "Any", "AnyObject", "NSString", "NSAttributedString", "NSFont", "NSColor", "NSView", "NSViewController", "NSWindow"]
+        
+        for type in types {
+            highlightPattern("\\b\(type)\\b", in: result, color: colors.type, font: baseFont)
+        }
+        
+        // Strings
+        highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
+        
+        // Comments
+        highlightPattern("//.*$", in: result, color: colors.comment, font: baseFont, options: [.anchorsMatchLines])
+        highlightPattern("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/", in: result, color: colors.comment, font: baseFont)
+        
+        // Numbers
+        highlightPattern("\\b\\d+(\\.\\d+)?\\b", in: result, color: colors.number, font: baseFont)
+        
+        // Function calls
+        highlightPattern("\\b[a-z][a-zA-Z0-9_]*(?=\\()", in: result, color: colors.function, font: baseFont)
+        
+        return result
+    }
+    
+    private func highlightJavaScript(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: code, attributes: [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ])
+        
+        // Keywords
+        let keywords = ["function", "var", "let", "const", "if", "else", "for", "while", "return", "class", "extends", "import", "export", "default", "new", "this", "super", "null", "undefined", "true", "false", "try", "catch", "throw", "async", "await", "yield", "typeof", "instanceof", "delete", "void"]
+        
+        for keyword in keywords {
+            highlightPattern("\\b\(keyword)\\b", in: result, color: colors.keyword, font: baseFont)
+        }
+        
+        // Strings (single and double quotes)
+        highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
+        highlightPattern("'[^'\\n]*'", in: result, color: colors.string, font: baseFont)
+        highlightPattern("`[^`]*`", in: result, color: colors.string, font: baseFont)
+        
+        // Comments
+        highlightPattern("//.*$", in: result, color: colors.comment, font: baseFont, options: [.anchorsMatchLines])
+        highlightPattern("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/", in: result, color: colors.comment, font: baseFont)
+        
+        // Numbers
+        highlightPattern("\\b\\d+(\\.\\d+)?\\b", in: result, color: colors.number, font: baseFont)
+        
+        // Function calls
+        highlightPattern("\\b[a-z][a-zA-Z0-9_]*(?=\\()", in: result, color: colors.function, font: baseFont)
+        
+        return result
+    }
+    
+    private func highlightPython(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: code, attributes: [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ])
+        
+        // Keywords
+        let keywords = ["def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "as", "try", "except", "finally", "with", "lambda", "yield", "assert", "break", "continue", "del", "global", "nonlocal", "pass", "raise", "and", "or", "not", "in", "is", "None", "True", "False"]
+        
+        for keyword in keywords {
+            highlightPattern("\\b\(keyword)\\b", in: result, color: colors.keyword, font: baseFont)
+        }
+        
+        // Built-in functions
+        let builtins = ["print", "len", "range", "str", "int", "float", "list", "dict", "set", "tuple", "bool", "type", "isinstance", "open", "file", "input", "map", "filter", "reduce", "zip", "enumerate", "sorted", "reversed"]
+        
+        for builtin in builtins {
+            highlightPattern("\\b\(builtin)\\b", in: result, color: colors.function, font: baseFont)
+        }
+        
+        // Strings (single and double quotes, including triple quotes)
+        highlightPattern("\"\"\"[^\"]*\"\"\"", in: result, color: colors.string, font: baseFont)
+        highlightPattern("'''[^']*'''", in: result, color: colors.string, font: baseFont)
+        highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
+        highlightPattern("'[^'\\n]*'", in: result, color: colors.string, font: baseFont)
+        
+        // Comments
+        highlightPattern("#.*$", in: result, color: colors.comment, font: baseFont, options: [.anchorsMatchLines])
+        
+        // Numbers
+        highlightPattern("\\b\\d+(\\.\\d+)?\\b", in: result, color: colors.number, font: baseFont)
+        
+        // Decorators
+        highlightPattern("@\\w+", in: result, color: colors.keyword, font: baseFont)
+        
+        return result
+    }
+    
+    private func highlightJSON(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: code, attributes: [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ])
+        
+        // Property names
+        highlightPattern("\"[^\"]+\"(?=\\s*:)", in: result, color: colors.keyword, font: baseFont)
+        
+        // String values
+        highlightPattern("(?<=:\\s*)\"[^\"]*\"", in: result, color: colors.string, font: baseFont)
+        
+        // Numbers
+        highlightPattern("\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b", in: result, color: colors.number, font: baseFont)
+        
+        // Booleans and null
+        highlightPattern("\\b(true|false|null)\\b", in: result, color: colors.keyword, font: baseFont)
+        
+        return result
+    }
+    
+    private func highlightHTML(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: code, attributes: [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ])
+        
+        // Tags
+        highlightPattern("<[^>]+>", in: result, color: colors.keyword, font: baseFont)
+        
+        // Attributes
+        highlightPattern("\\b\\w+(?==)", in: result, color: colors.type, font: baseFont)
+        
+        // Attribute values
+        highlightPattern("\"[^\"]*\"", in: result, color: colors.string, font: baseFont)
+        highlightPattern("'[^']*'", in: result, color: colors.string, font: baseFont)
+        
+        // Comments
+        highlightPattern("<!--[^>]*-->", in: result, color: colors.comment, font: baseFont)
+        
+        return result
+    }
+    
+    private func highlightCSS(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: code, attributes: [
+            .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.controlBackgroundColor
+        ])
+        
+        // Selectors
+        highlightPattern("^[^{]+(?=\\{)", in: result, color: colors.keyword, font: baseFont, options: [.anchorsMatchLines])
+        
+        // Properties
+        highlightPattern("\\b[a-z-]+(?=:)", in: result, color: colors.type, font: baseFont)
+        
+        // Values
+        highlightPattern(":[^;]+", in: result, color: colors.string, font: baseFont)
+        
+        // Colors
+        highlightPattern("#[0-9a-fA-F]{3,6}\\b", in: result, color: colors.number, font: baseFont)
+        
+        // Numbers with units
+        highlightPattern("\\b\\d+(\\.\\d+)?(px|em|rem|%|vh|vw|pt)?\\b", in: result, color: colors.number, font: baseFont)
+        
+        // Comments
+        highlightPattern("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/", in: result, color: colors.comment, font: baseFont)
+        
+        return result
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func highlightPattern(_ pattern: String, in attributedString: NSMutableAttributedString, color: NSColor, font: NSFont, options: NSRegularExpression.Options = []) {
+        do {
+            let regex = try NSRegularExpression(pattern: pattern, options: options)
+            let range = NSRange(location: 0, length: attributedString.length)
+            
+            regex.enumerateMatches(in: attributedString.string, options: [], range: range) { match, _, _ in
+                guard let matchRange = match?.range else { return }
+                attributedString.addAttribute(.foregroundColor, value: color, range: matchRange)
+                attributedString.addAttribute(.font, value: font, range: matchRange)
+            }
+        } catch {
+            Logger.error("Regex error: \(error)")
+        }
+    }
+}

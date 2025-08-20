@@ -61,7 +61,8 @@ class ThemeManager {
                 headingSpacing: 20,
                 codeBlockPadding: 12,
                 blockquotePadding: 16
-            )
+            ),
+            syntaxColors: SyntaxColors()
         )
         
         // Dark Theme
@@ -98,7 +99,8 @@ class ThemeManager {
                 headingSpacing: 20,
                 codeBlockPadding: 12,
                 blockquotePadding: 16
-            )
+            ),
+            syntaxColors: SyntaxColors()
         )
         
         // Solarized Light
@@ -119,7 +121,8 @@ class ThemeManager {
                 lineNumbers: NSColor(hex: "#93a1a1")
             ),
             fonts: FontScheme.default,
-            spacing: SpacingScheme.default
+            spacing: SpacingScheme.default,
+            syntaxColors: SyntaxColors()
         )
         
         // Solarized Dark
@@ -140,7 +143,8 @@ class ThemeManager {
                 lineNumbers: NSColor(hex: "#586e75")
             ),
             fonts: FontScheme.default,
-            spacing: SpacingScheme.default
+            spacing: SpacingScheme.default,
+            syntaxColors: SyntaxColors()
         )
         
         // GitHub Theme
@@ -177,7 +181,8 @@ class ThemeManager {
                 headingSpacing: 24,
                 codeBlockPadding: 16,
                 blockquotePadding: 16
-            )
+            ),
+            syntaxColors: SyntaxColors()
         )
         
         // Dracula Theme
@@ -198,7 +203,8 @@ class ThemeManager {
                 lineNumbers: NSColor(hex: "#6272a4")
             ),
             fonts: FontScheme.default,
-            spacing: SpacingScheme.default
+            spacing: SpacingScheme.default,
+            syntaxColors: SyntaxColors()
         )
     }
     
@@ -275,13 +281,15 @@ struct Theme {
     let colors: ColorScheme
     let fonts: FontScheme
     let spacing: SpacingScheme
+    let syntaxColors: SyntaxColors
     
     static let `default` = Theme(
         name: "Default",
         isDark: false,
         colors: ColorScheme.default,
         fonts: FontScheme.default,
-        spacing: SpacingScheme.default
+        spacing: SpacingScheme.default,
+        syntaxColors: SyntaxColors()
     )
 }
 
