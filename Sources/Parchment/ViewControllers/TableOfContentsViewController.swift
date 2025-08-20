@@ -83,7 +83,7 @@ class TableOfContentsViewController: NSViewController {
             
             // Try to restore selection
             if let selectedHeader = selectedHeader {
-                for (index, header) in headers.enumerated() {
+                for header in headers {
                     if header.title == selectedHeader.title && header.level == selectedHeader.level {
                         let row = outlineView.row(forItem: header)
                         if row >= 0 {

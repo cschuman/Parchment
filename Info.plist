@@ -39,9 +39,9 @@
             <key>CFBundleTypeName</key>
             <string>Markdown Document</string>
             <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
+            <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Default</string>
+            <string>Owner</string>
             <key>LSItemContentTypes</key>
             <array>
                 <string>net.daringfireball.markdown</string>
@@ -103,6 +103,12 @@
     
     <key>NSAppleEventsUsageDescription</key>
     <string>Parchment needs to respond to system events to handle file opening.</string>
+    
+    <key>LSCanProvideIMVideoDataSource</key>
+    <false/>
+    
+    <key>NSHighResolutionCapable</key>
+    <true/>
     
     <key>NSServices</key>
     <array>

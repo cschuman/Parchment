@@ -21,7 +21,7 @@ class ImageLoader {
                 return image
             }
         } catch {
-            print("Failed to load image from \(url): \(error)")
+            Logger.error("Failed to load image from \(url): \(error)")
         }
         
         return nil

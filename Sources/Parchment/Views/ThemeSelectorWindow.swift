@@ -160,7 +160,7 @@ class ThemeSelectorWindow: NSWindow {
         }
         
         let message = greet(name: "World")
-        print(message) // Output: Hello, World!
+        Logger.info(message)
         ```
         
         ## Blockquote

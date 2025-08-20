@@ -490,7 +490,7 @@ class SearchResultCellView: NSTableCellView {
     }
 }
 
-private class SearchOperation: Operation {
+private class SearchOperation: Operation, @unchecked Sendable {
     let query: String
     let content: String
     let textStorage: NSTextStorage?

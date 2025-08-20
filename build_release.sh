@@ -1,101 +1,48 @@
-#!/bin/bash
+#\!/bin/bash
 
-echo "Building Parchment for Release..."
+# Build release version of Parchment
+echo "Building Parchment release version..."
 
-# Build in release mode
+# Clean previous builds
+rm -rf .build/release Parchment.app release
+
+# Build release (simplified for single architecture)
 swift build -c release
 
-# Create app bundle structure
-APP_NAME="Parchment"
-APP_BUNDLE="$APP_NAME.app"
-CONTENTS="$APP_BUNDLE/Contents"
-MACOS="$CONTENTS/MacOS"
-RESOURCES="$CONTENTS/Resources"
+# Create app bundle
+mkdir -p Parchment.app/Contents/{MacOS,Resources}
 
-# Clean and create directories
-rm -rf "$APP_BUNDLE"
-mkdir -p "$MACOS"
-mkdir -p "$RESOURCES"
+# Copy Info.plist
+cp Info.plist Parchment.app/Contents/
 
 # Copy executable
-cp ".build/release/$APP_NAME" "$MACOS/$APP_NAME"
+cp .build/release/Parchment Parchment.app/Contents/MacOS/
 
-# Copy icon
-cp Parchment.icns "$RESOURCES/" 2>/dev/null || cp MarkdownViewer.icns "$RESOURCES/"
+# Copy font if it exists
+if [ -f "OpenDyslexic-Regular.otf" ]; then
+    cp OpenDyslexic-Regular.otf Parchment.app/Contents/Resources/
+    echo "Copied OpenDyslexic font to app bundle"
+fi
 
-# Create Info.plist
-cat > "$CONTENTS/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>Parchment</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.corey.Parchment</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>Parchment</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-    <key>CFBundleIconFile</key>
-    <string>Parchment</string>
-    <key>CFBundleDocumentTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeExtensions</key>
-            <array>
-                <string>md</string>
-                <string>markdown</string>
-            </array>
-            <key>CFBundleTypeName</key>
-            <string>Markdown Document</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>net.daringfireball.markdown</string>
-            </array>
-        </dict>
-    </array>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.productivity</string>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025 Corey. All rights reserved.</string>
-</dict>
-</plist>
-EOF
+# Get version from git tag or use date
+VERSION=$(git describe --tags 2>/dev/null || echo "v1.0.0-$(date +%Y%m%d)")
+echo "Version: $VERSION"
 
-# Make executable
-chmod +x "$MACOS/$APP_NAME"
+# Create release directory
+mkdir -p release
 
-echo "✅ Release build created: $APP_BUNDLE"
+# Create ZIP for distribution
+echo "Creating ZIP..."
+zip -r "release/Parchment-$VERSION.zip" Parchment.app -x "*.DS_Store"
+
 echo ""
-echo "Features included:"
-echo "  ✅ Native Swift/AppKit implementation"
-echo "  ✅ Inline formatting (bold, italic, code, links, strikethrough)"
-echo "  ✅ Tables with headers and data cells"
-echo "  ✅ Image support (local + remote with caching)"
-echo "  ✅ Syntax highlighting (Swift, JavaScript, Python, etc.)"
-echo "  ✅ Table of Contents with navigation"
-echo "  ✅ Focus Mode and reading statistics"
-echo "  ✅ Live file watching and updates"
-echo "  ✅ Export to PDF/HTML/RTF/DOCX"
-echo "  ✅ Wiki-links and backlinks support"
-echo "  ✅ Zoom controls and keyboard shortcuts"
-echo "  ✅ Custom app icon"
+echo "Release build created:"
+echo "  - release/Parchment-$VERSION.zip"
 echo ""
-echo "Ready for distribution! 🚀"
+echo "File size:"
+ls -lh release/Parchment-$VERSION.zip
+
+# Generate checksum
+echo ""
+echo "Checksum:"
+shasum -a 256 release/Parchment-$VERSION.zip | tee release/checksums.txt

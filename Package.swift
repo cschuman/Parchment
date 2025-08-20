@@ -34,7 +34,8 @@ let package = Package(
             name: "TestParser",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
-            ]
+            ],
+            path: "Tests/TestParser"
         ),
         .testTarget(
             name: "ParchmentTests",

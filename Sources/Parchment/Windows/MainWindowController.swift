@@ -122,11 +122,7 @@ class MainWindowController: NSWindowController {
         
         // Check file size
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-        let isLargeFile = fileSize > 1_000_000 // Show progress for files > 1MB
-        
-        // if isLargeFile {
-        //     window?.contentView?.showProgress(message: "Loading \(url.lastPathComponent)...", determinate: true)
-        // }
+        _ = fileSize > 1_000_000 // Show progress for files > 1MB
         
         // Use performance optimizer for fast loading
         let loadStart = CFAbsoluteTimeGetCurrent()
@@ -148,9 +144,7 @@ class MainWindowController: NSWindowController {
                 
                 // Update performance metrics
                 self?.statusBarView?.updateParseTime(optimizedDoc.parseTime)
-                let totalLoadTime = CFAbsoluteTimeGetCurrent() - loadStart
-                
-                // Log performance
+                _ = CFAbsoluteTimeGetCurrent() - loadStart
                 
                 if let mvc = self?.markdownViewController {
                     mvc.loadDocument(document)
@@ -162,11 +156,7 @@ class MainWindowController: NSWindowController {
                 
                 DocumentCache.shared.cacheDocument(document)
                 
-                // Hide progress
-                // self?.window?.contentView?.hideProgress()
-                
             case .failure(let error):
-                // self?.window?.contentView?.hideProgress()
                 self?.showError("Failed to load document: \(error.localizedDescription)")
             }
         }
@@ -547,7 +537,6 @@ extension MainWindowController: FindBarDelegate {
         
         // Search for all matches
         let text = textStorage.string as NSString
-        // let searchRange = NSRange(location: 0, length: text.length)
         var searchStart = 0
         
         while searchStart < text.length {

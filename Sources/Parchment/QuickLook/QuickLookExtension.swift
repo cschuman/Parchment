@@ -175,7 +175,7 @@ import Markdown
         do {
             try html.write(to: tempURL, atomically: true, encoding: .utf8)
         } catch {
-            print("Failed to write preview HTML: \(error)")
+            Logger.error("Failed to write preview HTML: \(error)")
         }
     }
 }

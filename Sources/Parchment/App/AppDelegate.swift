@@ -13,7 +13,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Register custom fonts
         FontManager.shared.registerCustomFonts()
         
-        
         setupMenuBar()
         setupEnhancedMenus()  // Add enhanced menus for new features
         loadRecentDocuments()
@@ -42,6 +41,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         registerForFileSystemEvents()
     }
     
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // When clicking on the Dock icon, show the window if it's hidden
+        if !flag {
+            showWelcomeWindow()
+        }
+        return true
+    }
+    
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Logger.info("AppDelegate: Application became active")
+    }
+    
+    func application(_ application: NSApplication, open urls: [URL]) {
+        Logger.info("AppDelegate: application:open:urls called with \(urls.count) URLs")
+        for url in urls {
+            Logger.info("AppDelegate: Processing URL: \(url.path)")
+            if url.pathExtension.lowercased() == "md" || 
+               url.pathExtension.lowercased() == "markdown" ||
+               url.pathExtension.lowercased() == "txt" {
+                openDocument(at: url)
+                break // Only open first file for now
+            }
+        }
+    }
+    
     func applicationWillTerminate(_ notification: Notification) {
         saveRecentDocuments()
         documentCache.persist()
@@ -52,10 +76,58 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        Logger.info("AppDelegate: openFile called with: \(filename)")
+        
+        // Ensure app is active and window is visible
+        NSApp.activate(ignoringOtherApps: true)
+        
         let url = URL(fileURLWithPath: filename)
+        
+        // Verify it's a markdown file
+        let validExtensions = ["md", "markdown", "mdown", "mkd", "mkdown", "mdwn", "mdtxt", "mdtext", "text", "txt"]
+        guard validExtensions.contains(url.pathExtension.lowercased()) else {
+            Logger.info("AppDelegate: Not a markdown file: \(filename)")
+            return false
+        }
+        
         openDocument(at: url)
         return true
     }
+    
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        Logger.info("AppDelegate: openFiles called with \(filenames.count) files")
+        
+        // Ensure app is active and window is visible
+        NSApp.activate(ignoringOtherApps: true)
+        
+        var handledFiles: [String] = []
+        
+        // Handle multiple files being dropped onto the app icon
+        for filename in filenames {
+            Logger.info("AppDelegate: Processing file: \(filename)")
+            let url = URL(fileURLWithPath: filename)
+            
+            // Check if it's a markdown file
+            let validExtensions = ["md", "markdown", "mdown", "mkd", "mkdown", "mdwn", "mdtxt", "mdtext", "text", "txt"]
+            if validExtensions.contains(url.pathExtension.lowercased()) {
+                Logger.info("AppDelegate: Opening markdown file: \(filename)")
+                openDocument(at: url)
+                handledFiles.append(filename)
+                // For now, only open the first file since we don't have multi-tab support yet
+                break
+            } else {
+                Logger.info("AppDelegate: Skipping non-markdown file: \(filename)")
+            }
+        }
+        
+        // Tell the system we handled all the files
+        if !handledFiles.isEmpty {
+            sender.reply(toOpenOrPrint: .success)
+        } else {
+            sender.reply(toOpenOrPrint: .failure)
+        }
+    }
+    
     
     private func setupMenuBar() {
         let mainMenu = NSMenu()

@@ -157,7 +157,7 @@ class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         
         ```swift
         func example() {
-            print("Hello, Parchment!")
+            Logger.info("Hello, Parchment!")
         }
         ```
         """
