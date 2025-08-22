@@ -1,6 +1,5 @@
 import Cocoa
 
-
 // Disable Touch Bar before creating NSApplication
 if #available(macOS 10.12.2, *) {
     UserDefaults.standard.set(false, forKey: "NSApplicationTouchBarEnabled")

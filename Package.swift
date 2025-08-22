@@ -12,6 +12,10 @@ let package = Package(
             targets: ["Parchment"]
         ),
         .executable(
+            name: "parchment",
+            targets: ["ParchmentCLI"]
+        ),
+        .executable(
             name: "TestParser",
             targets: ["TestParser"]
         ),
@@ -28,6 +32,12 @@ let package = Package(
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
+            ]
+        ),
+        .executableTarget(
+            name: "ParchmentCLI",
+            dependencies: [
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
         .executableTarget(
