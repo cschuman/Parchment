@@ -44,11 +44,22 @@ class MarkdownViewController: NSViewController {
         // Setup enhanced features after view hierarchy is complete
         setupEnhancedFeatures()
         
+        // Enable smooth scrolling with spring physics
+        scrollView.enableSmoothScrolling()
+        
         // Listen for preference changes
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(preferencesChanged),
             name: .preferencesChanged,
+            object: nil
+        )
+        
+        // Listen for theme changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(themeDidChange),
+            name: ThemeManager.themeDidChangeNotification,
             object: nil
         )
         
@@ -152,9 +163,10 @@ class MarkdownViewController: NSViewController {
         // Track render time
         let renderStart = CFAbsoluteTimeGetCurrent()
         
-        // Convert to attributed string synchronously for now
-        let visitor = MarkdownAttributedStringVisitor(zoomLevel: zoomLevel)
-        let attributedString = visitor.convertDocument(parsedDoc)
+        // Use enhanced renderer with current theme
+        let currentTheme = ThemeManager.shared.currentParchmentTheme ?? ParchmentTheme.minimal
+        let renderer = EnhancedMarkdownRenderer(theme: currentTheme, zoomLevel: zoomLevel)
+        let attributedString = renderer.render(parsedDoc)
         
         let renderTime = CFAbsoluteTimeGetCurrent() - renderStart
         statusBarDelegate?.updateRenderTime(renderTime)
@@ -433,6 +445,19 @@ class MarkdownViewController: NSViewController {
         applyPreferences()
         if let document = currentDocument {
             loadDocument(document)
+        }
+    }
+    
+    @objc private func themeDidChange() {
+        // Re-render with new theme
+        if let document = currentDocument {
+            loadNormalDocument(document)
+        }
+        
+        // Apply theme to text view
+        if let theme = ThemeManager.shared.currentParchmentTheme {
+            textView.applyTheme(theme)
+            scrollView.applyTheme(theme)
         }
     }
     

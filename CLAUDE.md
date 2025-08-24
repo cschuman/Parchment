@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important Instructions
+
+- **NEVER add Claude as a co-author in git commits**
+- Do not include "Co-Authored-By: Claude" or any similar attribution
+- Do not add emoji or "Generated with Claude Code" to commit messages
+
 ## Project Overview
 
 Parchment is a native macOS markdown viewer application built with Swift and AppKit. It provides high-performance markdown rendering with advanced features like wiki-links, backlinks, and Metal-accelerated text rendering.

@@ -1,35 +1,37 @@
 # Parchment
 
-A blazingly fast, native macOS markdown viewer with advanced features for power users and knowledge workers.
+A beautifully crafted, blazingly fast native macOS markdown viewer that puts reading experience first.
 
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)
 ![macOS](https://img.shields.io/badge/macOS-13.0+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## ✨ Features
+## ✨ Why Parchment?
 
-### Core Features
-- **Lightning Fast Performance** - Native Swift/AppKit implementation with Metal acceleration
+Parchment is the markdown viewer for Mac users who appreciate native performance and exceptional design. Built with Swift and AppKit, it launches instantly, renders beautifully, and feels like a true Mac app should feel.
+
+### Core Excellence
+- **Instant Launch** - Native Swift/AppKit means no Electron overhead
+- **Beautiful Typography** - Carefully tuned rendering for optimal readability  
 - **Focus Mode** - Eliminate distractions with intelligent content dimming and typewriter scrolling
-- **Smart Table of Contents** - Hierarchical navigation panel with real-time position tracking
-- **Live File Watching** - Automatic refresh with diff highlighting when files change
-- **Reading Statistics** - Word count, reading time, complexity score, and progress tracking
+- **Smart Navigation** - Hierarchical table of contents with smooth scrolling
+- **Live Preview** - See changes instantly as your files update
+- **Reading Statistics** - Word count, reading time, and reading progress
 
-### Advanced Features
-- **Wiki-Links Support** - `[[Page Name]]` syntax with automatic link resolution
-- **Backlinks Panel** - See all documents linking to the current file
-- **Knowledge Graph** - Interactive visualization of document relationships
-- **Export Options** - PDF, HTML, RTF, DOCX, and plain text export
-- **Syntax Highlighting** - Beautiful code block rendering for multiple languages
-- **Quick Look Integration** - System-wide markdown preview support
+### Design Features
+- **Native Performance** - Optimized for smooth 120Hz scrolling on ProMotion displays
+- **Thoughtful Themes** - Hand-crafted light and dark themes with perfect contrast
+- **Syntax Highlighting** - Beautiful code block rendering that matches your theme
+- **Distraction-Free** - Clean interface that gets out of your way
+- **Quick Look Support** - Preview markdown files with spacebar in Finder
 
-## 🚀 Performance
+## 🚀 Real-World Performance
 
-- **10x faster** file opening compared to Electron-based alternatives
-- **5x less memory** usage through efficient caching
-- **60fps scrolling** even with 100MB+ documents
-- **<50ms** file open time for documents under 1MB
-- **Metal-accelerated** text rendering for ultimate smoothness
+- **Instant** - Sub-100ms launch time
+- **Lightweight** - Under 50MB memory usage for typical documents
+- **Smooth** - Consistent 60-120fps scrolling
+- **Responsive** - No beach balls, no lag, no waiting
+- **Native** - True Mac app performance and efficiency
 
 ## 📦 Installation
 
@@ -76,44 +78,40 @@ open -a Parchment document.md
 | Navigate to Next Header | `→` (three-finger swipe) |
 | Navigate to Previous Header | `←` (three-finger swipe) |
 
-## 🎯 User Workflows
+## 🎯 Perfect For
 
-### Quick Review Flow
-1. Select file in Finder → Space for Quick Look
-2. Identify section via TOC → `⌘Click` to edit
-3. Changes appear instantly with highlights
+### Documentation Review
+- Preview README files with beautiful rendering
+- Navigate large docs with the table of contents
+- Copy code blocks with syntax highlighting preserved
 
-### Research Reading Flow
-1. Open document → Auto-enters focus mode
-2. `Tab` toggles TOC for navigation
-3. `⌘/` shows reading statistics
-4. Highlights sync to Apple Notes
+### Focused Reading
+- Distraction-free mode for long-form content
+- Typewriter scrolling keeps your focus centered
+- Reading statistics help track progress
 
-### Knowledge Management Flow
-1. `[[WikiLinks]]` create connections
-2. Backlinks panel shows references
-3. Graph view visualizes relationships
-4. Export to various formats
+### Quick Preview
+- Spacebar preview in Finder via Quick Look
+- Instant file switching with no lag
+- Live updates as files change
 
-## 🏗️ Architecture
+## 🏗️ Clean Architecture
 
 ```
 Parchment/
 ├── App/                    # Application lifecycle
-├── Windows/                # Window controllers
-├── ViewControllers/        # View controllers
-├── Models/                 # Data models
-├── Rendering/              # Markdown rendering engine
-│   ├── MarkdownRenderingEngine.swift
-│   ├── MetalTextRenderer.swift
-│   └── SyntaxHighlighter.swift
-├── KnowledgeGraph/         # Wiki-links and graph
-│   ├── WikiLinkParser.swift
-│   └── GraphVisualizationView.swift
+├── Windows/                # Window management
+├── ViewControllers/        # View controllers  
+├── Views/                  # Custom views
+├── Rendering/              # Markdown rendering pipeline
+│   ├── MarkdownAttributedStringVisitor.swift
+│   └── CodeSyntaxHighlighter.swift
+├── Theme/                  # Theme management
+├── Navigation/             # TOC and navigation
 ├── Export/                 # Export functionality
-├── QuickLook/             # System integration
-├── Utilities/             # Helper classes
-└── Resources/             # Assets and configs
+├── Performance/            # Performance monitoring
+├── Utilities/              # Helper classes
+└── Resources/             # Assets and themes
 ```
 
 ## 🔧 Configuration
@@ -132,15 +130,14 @@ Run the test suite:
 swift test
 ```
 
-## 📈 Benchmarks
+## 💎 What Makes Parchment Different
 
-| Operation | Parchment | Typical Electron App |
-|-----------|---------------|-------------------|
-| 1MB File Open | 45ms | 450ms |
-| 10MB File Scroll | 60fps | 20fps |
-| Memory (10 files) | 95MB | 480MB |
-| CPU Idle | <5% | 15-25% |
-| Battery Impact | Low | High |
+Unlike Electron-based viewers, Parchment is a true native Mac app:
+- Launches instantly, no spinner
+- Uses native fonts and rendering
+- Respects your system preferences
+- Works perfectly with Mission Control and Spaces
+- Minimal battery impact
 
 ## 🤝 Contributing
 
@@ -164,23 +161,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-### Version 1.1
-- [ ] Plugin architecture for extensions
-- [ ] Mermaid diagram support
-- [ ] Math equation rendering (LaTeX)
-- [ ] Custom CSS themes
+### Near Term - Polish & Performance
+- [ ] Enhanced typography with optical sizing
+- [ ] Smooth spring-physics scrolling
+- [ ] More beautiful built-in themes
+- [ ] Faster document loading (<20ms)
+- [ ] Print styles optimization
 
-### Version 1.2
-- [ ] iCloud sync for reading progress
-- [ ] Collaborative annotations
-- [ ] Voice note integration
-- [ ] AI-powered summarization
+### Medium Term - Reading Experience
+- [ ] Reading progress indicators
+- [ ] Automatic bookmarks
+- [ ] Export with custom styling
+- [ ] Better image handling
+- [ ] PDF export with perfect fidelity
 
-### Version 2.0
-- [ ] iOS/iPadOS companion app
-- [ ] Cross-device sync
-- [ ] Publishing to static sites
-- [ ] Advanced search with filters
+### Long Term - Platform Excellence  
+- [ ] Touch Bar support
+- [ ] Handoff between devices
+- [ ] Stage Manager optimization
+- [ ] System text services integration
 
 ## 💬 Support
 
