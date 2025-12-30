@@ -25,6 +25,7 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     private var typewriterManager: TypewriterScrollManager?
     private var statisticsManager: ReadingStatisticsManager?
     private var navigationCoordinator: NavigationCoordinator?
+    private var readingProgressView: ReadingProgressView?
 
     // Reading position restoration
     private var savePositionTimer: Timer?
@@ -142,9 +143,22 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         
         // Setup statistics manager
         statisticsManager = ReadingStatisticsManager(parentView: view)
-        
+
         // Setup navigation coordinator
         navigationCoordinator = NavigationCoordinator(textView: textView, scrollView: scrollView)
+
+        // Setup reading progress indicator
+        readingProgressView = ReadingProgressView()
+        readingProgressView?.translatesAutoresizingMaskIntoConstraints = false
+        if let progressView = readingProgressView {
+            view.addSubview(progressView)
+            NSLayoutConstraint.activate([
+                progressView.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+                progressView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                progressView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
+                progressView.widthAnchor.constraint(equalToConstant: 12)
+            ])
+        }
     }
     
     
@@ -455,7 +469,10 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
             .backgroundColor: theme.selectionColor
         ]
         textView?.drawsBackground = true
-        
+
+        // Apply theme to reading progress indicator
+        readingProgressView?.applyTheme(theme)
+
         // Force view updates
         scrollView?.needsDisplay = true
         textView?.needsDisplay = true
@@ -485,6 +502,9 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         // Update status bar progress in real-time
         updateStatusBarProgress()
 
+        // Update reading progress indicator
+        updateReadingProgress()
+
         // Don't save position while restoring
         guard !isRestoringPosition else { return }
 
@@ -493,6 +513,21 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         savePositionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             self?.saveCurrentScrollPosition()
         }
+    }
+
+    private func updateReadingProgress() {
+        let documentHeight = textView.frame.height
+        let visibleRect = scrollView.contentView.visibleRect
+        let scrollableHeight = documentHeight - visibleRect.height
+
+        guard scrollableHeight > 0 else {
+            readingProgressView?.updateProgress(0)
+            return
+        }
+
+        let percentage = visibleRect.origin.y / scrollableHeight
+        let clampedPercentage = CGFloat(min(max(percentage, 0), 1))
+        readingProgressView?.updateProgress(clampedPercentage)
     }
 
     private func updateStatusBarProgress() {
