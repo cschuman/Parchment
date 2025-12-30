@@ -35,25 +35,27 @@ final class FileWatcher {
         }
 
         let queue = DispatchQueue(label: "file.watcher", qos: .background)
-        source = DispatchSource.makeFileSystemObjectSource(
+        let newSource = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fileDescriptor,
             eventMask: [.write, .rename, .delete, .extend],
             queue: queue
         )
 
-        source?.setEventHandler { [weak self] in
+        // Capture fileDescriptor by value for cancel handler to avoid race conditions
+        let fd = fileDescriptor
+
+        newSource.setEventHandler { [weak self] in
             self?.handleFileChange()
         }
 
-        source?.setCancelHandler { [weak self] in
-            self?.lock.lock()
-            defer { self?.lock.unlock() }
-            if let fd = self?.fileDescriptor, fd >= 0 {
+        newSource.setCancelHandler {
+            // Use captured fd value - no need for weak self
+            if fd >= 0 {
                 close(fd)
-                self?.fileDescriptor = -1
             }
         }
 
+        source = newSource
         source?.resume()
     }
 
@@ -83,6 +85,8 @@ final class FileWatcher {
         debounceWorkItem = nil
         source?.cancel()
         source = nil
+        // Reset file descriptor (actual close happens in cancel handler)
+        fileDescriptor = -1
     }
 
     deinit {

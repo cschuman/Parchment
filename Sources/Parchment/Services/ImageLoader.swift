@@ -1,5 +1,38 @@
 import Cocoa
 
+/// Errors that can occur during image loading
+enum ImageLoadError: Error, LocalizedError {
+    case unsafeURL(String)
+    case networkError(Error)
+    case httpError(Int)
+    case invalidContentType(String)
+    case imageTooLarge(Int)
+    case decodingFailed
+    case fileNotReadable(String)
+    case unsafeLocalPath(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsafeURL(let reason):
+            return "Unsafe URL: \(reason)"
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
+        case .httpError(let code):
+            return "HTTP error: \(code)"
+        case .invalidContentType(let type):
+            return "Invalid content type: \(type)"
+        case .imageTooLarge(let size):
+            return "Image too large: \(size) bytes (max: 10MB)"
+        case .decodingFailed:
+            return "Failed to decode image data"
+        case .fileNotReadable(let path):
+            return "File not readable: \(path)"
+        case .unsafeLocalPath(let path):
+            return "Unsafe local path: \(path)"
+        }
+    }
+}
+
 /// Secure image loader with SSRF protection, size limits, and bounded caching
 final class ImageLoader: NSObject {
     static let shared = ImageLoader()
@@ -76,15 +109,25 @@ final class ImageLoader: NSObject {
     // MARK: - Public Interface
 
     func loadImage(from url: URL) async -> NSImage? {
+        switch await loadImageWithResult(from: url) {
+        case .success(let image):
+            return image
+        case .failure(let error):
+            Logger.warning("Image load failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Loads an image with detailed error reporting
+    func loadImageWithResult(from url: URL) async -> Result<NSImage, ImageLoadError> {
         // Security: Validate URL before any network request
         guard isURLSafe(url) else {
-            Logger.warning("Blocked potentially unsafe URL: \(url.absoluteString.prefix(100))")
-            return nil
+            return .failure(.unsafeURL("URL failed security validation"))
         }
 
         // Check cache first
         if let cached = imageCache.object(forKey: url as NSURL) {
-            return cached
+            return .success(cached)
         }
 
         do {
@@ -93,75 +136,79 @@ final class ImageLoader: NSObject {
 
             // Validate response
             guard let httpResponse = response as? HTTPURLResponse else {
-                Logger.warning("Non-HTTP response for image URL")
-                return nil
+                return .failure(.httpError(0))
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                Logger.warning("HTTP error \(httpResponse.statusCode) loading image")
-                return nil
+                return .failure(.httpError(httpResponse.statusCode))
             }
 
             // Validate content type
             if let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type"),
                !contentType.hasPrefix("image/") {
-                Logger.warning("Non-image content type: \(contentType)")
-                return nil
+                return .failure(.invalidContentType(contentType))
             }
 
             // Validate size (double-check after download)
             guard data.count <= Self.maxImageSize else {
-                Logger.warning("Image too large: \(data.count) bytes")
-                return nil
+                return .failure(.imageTooLarge(data.count))
             }
 
             // Create image
             guard let image = NSImage(data: data) else {
-                Logger.warning("Failed to decode image data")
-                return nil
+                return .failure(.decodingFailed)
             }
 
             // Cache with estimated cost (bytes)
             imageCache.setObject(image, forKey: url as NSURL, cost: data.count)
 
-            return image
+            return .success(image)
 
         } catch {
-            Logger.error("Failed to load image from \(url.host ?? "unknown"): \(error.localizedDescription)")
-            return nil
+            return .failure(.networkError(error))
         }
     }
 
     /// Load image from local file path (bypasses network security checks)
     func loadLocalImage(from path: String) -> NSImage? {
+        switch loadLocalImageWithResult(from: path) {
+        case .success(let image):
+            return image
+        case .failure(let error):
+            Logger.warning("Local image load failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Load image from local file path with detailed error reporting
+    func loadLocalImageWithResult(from path: String) -> Result<NSImage, ImageLoadError> {
         let url = URL(fileURLWithPath: path)
 
         // Check cache
         if let cached = imageCache.object(forKey: url as NSURL) {
-            return cached
+            return .success(cached)
         }
 
         // Validate path is safe (resolve symlinks and check for escapes)
         guard isLocalPathSafe(path) else {
-            Logger.warning("Blocked potentially unsafe local path: \(path)")
-            return nil
+            return .failure(.unsafeLocalPath(path))
         }
 
         // Verify file exists and is readable
         guard FileManager.default.isReadableFile(atPath: path) else {
-            return nil
+            return .failure(.fileNotReadable(path))
         }
 
         // Load image
         guard let image = NSImage(contentsOfFile: path) else {
-            return nil
+            return .failure(.decodingFailed)
         }
 
         // Cache it
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
         imageCache.setObject(image, forKey: url as NSURL, cost: fileSize)
 
-        return image
+        return .success(image)
     }
 
     func clearCache() {

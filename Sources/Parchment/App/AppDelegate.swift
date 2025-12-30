@@ -36,9 +36,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let baseURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             let fileURL = URL(fileURLWithPath: path, relativeTo: baseURL).standardized
 
-            // Load the document after window is shown
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.openDocument(at: fileURL)
+            // Validate the path before loading
+            if validateCLIPath(fileURL) {
+                // Load the document after window is shown
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.openDocument(at: fileURL)
+                }
+            } else {
+                Logger.warning("CLI path validation failed for: \(path)")
             }
         }
         
@@ -664,6 +669,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func showError(_ message: String) {
         AlertHelper.showError(message)
+    }
+
+    // MARK: - Path Validation
+
+    /// Validates CLI-provided paths to ensure they are safe to open
+    private func validateCLIPath(_ url: URL) -> Bool {
+        let resolvedPath = url.resolvingSymlinksInPath().path
+
+        // Validate file extension
+        let validExtensions = ["md", "markdown", "mdown", "mkd", "mkdown", "mdwn", "mdtxt", "mdtext", "text", "txt"]
+        guard validExtensions.contains(url.pathExtension.lowercased()) else {
+            Logger.warning("Invalid file extension: \(url.pathExtension)")
+            return false
+        }
+
+        // Block access to sensitive system directories
+        let blockedPrefixes = [
+            "/System",
+            "/Library/Keychains",
+            "/private/etc",
+            "/private/var",
+            "/etc",
+            "/var/root",
+            "/usr/local/etc"
+        ]
+
+        for prefix in blockedPrefixes {
+            if resolvedPath.hasPrefix(prefix + "/") || resolvedPath == prefix {
+                Logger.warning("Blocked access to sensitive path: \(resolvedPath)")
+                return false
+            }
+        }
+
+        // Ensure file exists
+        guard FileManager.default.fileExists(atPath: resolvedPath) else {
+            Logger.warning("File does not exist: \(resolvedPath)")
+            return false
+        }
+
+        // Ensure it's readable
+        guard FileManager.default.isReadableFile(atPath: resolvedPath) else {
+            Logger.warning("File is not readable: \(resolvedPath)")
+            return false
+        }
+
+        return true
     }
 }
 

@@ -2,27 +2,39 @@ import Foundation
 
 struct AppVersion {
     static let current = Version(major: 1, minor: 3, patch: 0, build: getBuildNumber())
-    
+
+    // MARK: - Cached DateFormatters (expensive to create)
+
+    private static let buildNumberFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd.HHmm"
+        return formatter
+    }()
+
+    private static let changelogDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }()
+
     struct Version {
         let major: Int
         let minor: Int
         let patch: Int
         let build: String
-        
+
         var string: String {
             "\(major).\(minor).\(patch)"
         }
-        
+
         var fullString: String {
             "\(major).\(minor).\(patch) (\(build))"
         }
     }
-    
+
     static func getBuildNumber() -> String {
         // Use current date and time as build number
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd.HHmm"
-        return formatter.string(from: Date())
+        return buildNumberFormatter.string(from: Date())
     }
     
     static let changelog: [ChangelogEntry] = [
@@ -86,11 +98,10 @@ struct AppVersion {
         let version: String
         let date: Date
         let changes: [String]
-        
+
         var formattedDate: String {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            return formatter.string(from: date)
+            // Use cached formatter from parent struct
+            return AppVersion.changelogDateFormatter.string(from: date)
         }
     }
     

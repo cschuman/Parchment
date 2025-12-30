@@ -36,7 +36,10 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     // Reading position restoration
     private var savePositionTimer: Timer?
     private var isRestoringPosition = false
-    
+
+    // Observer registration flag to prevent duplicates
+    private var observersRegistered = false
+
     weak var statusBarDelegate: StatusBarDelegate?
     
     override init(nibName nibNameOrNil: NSNib.Name?, bundle nibBundleOrNil: Bundle?) {
@@ -48,7 +51,19 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     }
 
     deinit {
+        // Invalidate timers to prevent memory leaks
+        linkHoverTimer?.invalidate()
+        linkHoverTimer = nil
+        savePositionTimer?.invalidate()
+        savePositionTimer = nil
+
+        // Remove notification observers
         NotificationCenter.default.removeObserver(self)
+
+        // Remove tracking area if present
+        if let area = trackingArea {
+            textView?.removeTrackingArea(area)
+        }
     }
 
     override func loadView() {
@@ -60,10 +75,14 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         super.viewDidLoad()
         // Setup enhanced features after view hierarchy is complete
         setupEnhancedFeatures()
-        
+
         // Enable smooth scrolling with spring physics
         scrollView.enableSmoothScrolling()
-        
+
+        // Register observers only once to prevent duplicates
+        guard !observersRegistered else { return }
+        observersRegistered = true
+
         // Listen for preference changes
         NotificationCenter.default.addObserver(
             self,
@@ -71,7 +90,7 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
             name: .preferencesChanged,
             object: nil
         )
-        
+
         // Listen for theme changes
         NotificationCenter.default.addObserver(
             self,
@@ -79,7 +98,7 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
             name: .themeDidChange,
             object: nil
         )
-        
+
         // Apply initial preferences
         applyPreferences()
     }
