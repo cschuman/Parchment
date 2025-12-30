@@ -76,10 +76,11 @@ class MarkdownViewController: NSViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.drawsBackground = true
         scrollView.backgroundColor = NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)
-        
+        scrollView.setAccessibilityLabel("Document scroll view")
+
         // Enable smooth scrolling with spring physics
         scrollView.enableSmoothScrolling()
-        
+
         textView = MarkdownTextView()
         textView.isEditable = false
         textView.isSelectable = true
@@ -89,6 +90,9 @@ class MarkdownViewController: NSViewController {
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.textColor = NSColor.labelColor
         textView.drawsBackground = true
+        textView.setAccessibilityElement(true)
+        textView.setAccessibilityRole(.textArea)
+        textView.setAccessibilityLabel("Markdown document content")
         
         // Ensure the text view fills the scroll view
         textView.minSize = NSSize(width: 0, height: 0)
@@ -144,9 +148,11 @@ class MarkdownViewController: NSViewController {
     
     func loadDocument(_ document: MarkdownDocument) {
         currentDocument = document
-        
-        // Focus mode reset removed - simplified
-        
+
+        // Update accessibility with document info
+        let fileName = document.url?.lastPathComponent ?? "Untitled"
+        textView.setAccessibilityLabel("Markdown document: \(fileName)")
+
         // Always use normal loading path - simplified
         loadNormalDocument(document)
     }

@@ -352,7 +352,8 @@ class MainWindowController: NSWindowController {
         savePanel.canCreateDirectories = true
         savePanel.nameFieldStringValue = (document.url?.deletingPathExtension().lastPathComponent ?? "Untitled") + fileExtension(for: format)
         
-        savePanel.beginSheetModal(for: window!) { [weak self] response in
+        guard let window = window else { return }
+        savePanel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = savePanel.url else { return }
             
             Task {
@@ -381,7 +382,10 @@ class MainWindowController: NSWindowController {
         case .rtf:
             return [.rtf]
         case .docx:
-            return [UTType(filenameExtension: "docx")!]
+            if let docxType = UTType(filenameExtension: "docx") {
+                return [docxType]
+            }
+            return [.data] // Fallback if docx type not available
         case .plainText:
             return [.plainText]
         }
@@ -420,20 +424,28 @@ class MainWindowController: NSWindowController {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Show in Finder")
-        
-        alert.beginSheetModal(for: window!) { response in
+
+        guard let window = window else {
+            _ = alert.runModal() // Fallback to modal if no window
+            return
+        }
+        alert.beginSheetModal(for: window) { response in
             if response == .alertSecondButtonReturn {
                 NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
             }
         }
     }
-    
+
     private func showError(_ message: String) {
         let alert = NSAlert()
         alert.messageText = "Error"
         alert.informativeText = message
         alert.alertStyle = .warning
-        alert.beginSheetModal(for: window!) { _ in }
+        guard let window = window else {
+            _ = alert.runModal() // Fallback to modal if no window
+            return
+        }
+        alert.beginSheetModal(for: window) { _ in }
     }
 }
 

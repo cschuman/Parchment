@@ -58,6 +58,8 @@ final class FileWatcher {
     }
 
     private func handleFileChange() {
+        lock.lock()
+
         // Cancel any pending debounced callback
         debounceWorkItem?.cancel()
 
@@ -66,6 +68,8 @@ final class FileWatcher {
             self?.callback()
         }
         debounceWorkItem = workItem
+
+        lock.unlock()
 
         // Schedule callback after debounce interval
         callbackQueue.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)

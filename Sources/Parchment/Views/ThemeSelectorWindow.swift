@@ -31,9 +31,12 @@ class ThemeSelectorWindow: NSWindow {
         splitView.isVertical = true
         splitView.dividerStyle = .thin
         splitView.translatesAutoresizingMaskIntoConstraints = false
+        splitView.setAccessibilityElement(true)
+        splitView.setAccessibilityLabel("Theme selector split view")
 
         // Left side - Theme list
         let scrollView = NSScrollView()
+        scrollView.setAccessibilityLabel("Theme list")
         themeCollectionView = NSCollectionView()
         themeCollectionView.collectionViewLayout = createLayout()
         themeCollectionView.delegate = self
@@ -41,22 +44,32 @@ class ThemeSelectorWindow: NSWindow {
         themeCollectionView.isSelectable = true
         themeCollectionView.allowsMultipleSelection = false
         themeCollectionView.register(ThemeItemView.self, forItemWithIdentifier: NSUserInterfaceItemIdentifier("ThemeItem"))
+        themeCollectionView.setAccessibilityElement(true)
+        themeCollectionView.setAccessibilityRole(.list)
+        themeCollectionView.setAccessibilityLabel("Available themes")
 
         scrollView.documentView = themeCollectionView
         scrollView.hasVerticalScroller = true
 
         // Right side - Preview
         let previewContainer = NSView()
+        previewContainer.setAccessibilityElement(true)
+        previewContainer.setAccessibilityLabel("Theme preview area")
 
         let previewLabel = NSTextField(labelWithString: "Preview")
         previewLabel.font = NSFont.boldSystemFont(ofSize: 14)
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
+        previewLabel.setAccessibilityElement(true)
+        previewLabel.setAccessibilityRole(.staticText)
 
         let previewScrollView = NSScrollView()
         previewTextView = NSTextView()
         previewTextView.isEditable = false
         previewTextView.isRichText = true
         previewTextView.font = NSFont.systemFont(ofSize: 14)
+        previewTextView.setAccessibilityElement(true)
+        previewTextView.setAccessibilityRole(.textArea)
+        previewTextView.setAccessibilityLabel("Theme preview content")
         previewScrollView.documentView = previewTextView
         previewScrollView.hasVerticalScroller = true
         previewScrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -65,6 +78,8 @@ class ThemeSelectorWindow: NSWindow {
         applyButton.bezelStyle = .rounded
         applyButton.keyEquivalent = "\r"
         applyButton.translatesAutoresizingMaskIntoConstraints = false
+        applyButton.setAccessibilityLabel("Apply selected theme")
+        applyButton.setAccessibilityHelp("Applies the currently selected theme and closes the theme selector")
 
         previewContainer.addSubview(previewLabel)
         previewContainer.addSubview(previewScrollView)
@@ -229,7 +244,9 @@ extension ThemeSelectorWindow: NSCollectionViewDataSource {
     }
 
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let item = collectionView.makeItem(withIdentifier: NSUserInterfaceItemIdentifier("ThemeItem"), for: indexPath) as! ThemeItemView
+        guard let item = collectionView.makeItem(withIdentifier: NSUserInterfaceItemIdentifier("ThemeItem"), for: indexPath) as? ThemeItemView else {
+            return NSCollectionViewItem()
+        }
         let theme = ParchmentTheme.all[indexPath.item]
         item.configure(with: theme)
         return item
@@ -252,11 +269,16 @@ class ThemeItemView: NSCollectionViewItem {
 
     private var themeNameLabel: NSTextField!
     private var colorPreview: NSView!
+    private var themeName: String = ""
 
     override func loadView() {
         view = NSView()
         view.wantsLayer = true
         view.layer?.cornerRadius = 8
+
+        // Accessibility for the item view
+        view.setAccessibilityElement(true)
+        view.setAccessibilityRole(.button)
 
         themeNameLabel = NSTextField(labelWithString: "")
         themeNameLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
@@ -269,6 +291,7 @@ class ThemeItemView: NSCollectionViewItem {
         colorPreview.layer?.borderWidth = 1
         colorPreview.layer?.borderColor = NSColor.separatorColor.cgColor
         colorPreview.translatesAutoresizingMaskIntoConstraints = false
+        colorPreview.setAccessibilityElement(false) // Part of parent element
 
         view.addSubview(colorPreview)
         view.addSubview(themeNameLabel)
@@ -287,8 +310,13 @@ class ThemeItemView: NSCollectionViewItem {
     }
 
     func configure(with theme: ParchmentTheme) {
+        themeName = theme.name
         themeNameLabel.stringValue = theme.name
         colorPreview.layer?.backgroundColor = theme.backgroundColor.cgColor
+
+        // Update accessibility
+        view.setAccessibilityLabel("\(theme.name) theme")
+        view.setAccessibilityHelp("Select the \(theme.name) theme for the markdown viewer")
 
         // Add color swatches
         colorPreview.subviews.forEach { $0.removeFromSuperview() }

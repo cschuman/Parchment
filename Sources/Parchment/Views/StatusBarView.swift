@@ -278,45 +278,76 @@ class FrameRateMonitor {
     private var frameCount = 0
     private var lastTime = CACurrentMediaTime()
     private let callback: (Int) -> Void
-    
+    private var isRunning = false
+    private let lock = NSLock()
+
     init(callback: @escaping (Int) -> Void) {
         self.callback = callback
         setupDisplayLink()
     }
-    
+
     private func setupDisplayLink() {
         CVDisplayLinkCreateWithActiveCGDisplays(&displayLink)
-        
+
         guard let displayLink = displayLink else { return }
-        
+
+        // Use passRetained to prevent use-after-free - we release in deinit
+        let selfRef = Unmanaged.passRetained(self)
+
         CVDisplayLinkSetOutputCallback(displayLink, { (_, _, _, _, _, userInfo) -> CVReturn in
             guard let userInfo = userInfo else { return kCVReturnSuccess }
             let monitor = Unmanaged<FrameRateMonitor>.fromOpaque(userInfo).takeUnretainedValue()
             monitor.tick()
             return kCVReturnSuccess
-        }, Unmanaged.passUnretained(self).toOpaque())
-        
+        }, selfRef.toOpaque())
+
+        lock.lock()
+        isRunning = true
+        lock.unlock()
+
         CVDisplayLinkStart(displayLink)
     }
-    
+
     private func tick() {
+        lock.lock()
+        guard isRunning else {
+            lock.unlock()
+            return
+        }
         frameCount += 1
         let currentTime = CACurrentMediaTime()
         let elapsed = currentTime - lastTime
-        
+
         if elapsed >= 1.0 {
             let fps = Int(Double(frameCount) / elapsed)
-            DispatchQueue.main.async {
-                self.callback(fps)
-            }
             frameCount = 0
             lastTime = currentTime
+            lock.unlock()
+
+            DispatchQueue.main.async { [weak self] in
+                self?.callback(fps)
+            }
+        } else {
+            lock.unlock()
         }
     }
-    
-    deinit {
+
+    func stop() {
+        lock.lock()
+        isRunning = false
+        lock.unlock()
+
         if let displayLink = displayLink {
             CVDisplayLinkStop(displayLink)
+        }
+    }
+
+    deinit {
+        stop()
+
+        // Release the retained reference
+        if displayLink != nil {
+            Unmanaged.passUnretained(self).release()
         }
     }
 }
