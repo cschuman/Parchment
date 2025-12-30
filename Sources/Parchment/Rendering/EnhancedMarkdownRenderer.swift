@@ -154,6 +154,18 @@ final class EnhancedMarkdownRenderer {
 
     private func visitCodeBlock(_ codeBlock: CodeBlock, context: RenderContext) {
         let savedAttributes = context.currentAttributes
+
+        // Check for Mermaid diagrams
+        if codeBlock.language?.lowercased() == "mermaid" {
+            let rendered = MermaidRenderer.shared.renderToAttributedString(
+                codeBlock.code,
+                theme: theme,
+                baseAttributes: savedAttributes
+            )
+            context.attributedString.append(rendered)
+            return
+        }
+
         context.currentAttributes = typographyEngine.codeBlockAttributes()
 
         // Add spacing before code block
