@@ -89,7 +89,19 @@ final class StatusBarView: NSView, ThemeApplicable {
 
     // MARK: - Theme Support
 
-    func applyTheme(_ theme: ParchmentTheme) {
+    func applyTheme(_ theme: ParchmentTheme, animated: Bool) {
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.3
+                context.allowsImplicitAnimation = true
+                applyThemeColors(theme)
+            }
+        } else {
+            applyThemeColors(theme)
+        }
+    }
+
+    private func applyThemeColors(_ theme: ParchmentTheme) {
         layer?.backgroundColor = theme.backgroundColor.withAlphaComponent(0.95).cgColor
         let textColor = theme.textColor.withAlphaComponent(0.6)
         fileLabel?.textColor = textColor

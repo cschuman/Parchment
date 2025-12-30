@@ -12,23 +12,36 @@ final class TableOfContentsViewController: NSViewController, ThemeApplicable {
     private var currentHighlight: MarkdownHeader?
     private var currentTheme: ParchmentTheme = ParchmentTheme.current
     
-    func applyTheme(_ theme: ParchmentTheme) {
+    func applyTheme(_ theme: ParchmentTheme, animated: Bool) {
         self.currentTheme = theme
+
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.3
+                context.allowsImplicitAnimation = true
+                applyThemeColors(theme)
+            }
+        } else {
+            applyThemeColors(theme)
+        }
+    }
+
+    private func applyThemeColors(_ theme: ParchmentTheme) {
         // Apply theme to table of contents
         view.wantsLayer = true
         view.layer?.backgroundColor = theme.backgroundColor.cgColor
-        
+
         // Apply to outline view
         outlineView?.backgroundColor = theme.backgroundColor
         outlineView?.gridColor = theme.textColor.withAlphaComponent(0.1)
-        
+
         // Apply to enclosing scroll view
         outlineView?.enclosingScrollView?.backgroundColor = theme.backgroundColor
         outlineView?.enclosingScrollView?.drawsBackground = true
-        
+
         // Update row colors by reloading data
         outlineView?.reloadData()
-        
+
         // Force redraw
         view.needsDisplay = true
         outlineView?.needsDisplay = true

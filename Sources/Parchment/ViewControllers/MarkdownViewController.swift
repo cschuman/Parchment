@@ -454,43 +454,94 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         applyZoom()
     }
     
-    func applyTheme(_ theme: ParchmentTheme) {
-        // Clear text storage first to prevent bleed
-        textView?.textStorage?.setAttributedString(NSAttributedString())
-        
-        // Apply theme to scroll view and text view
-        scrollView?.backgroundColor = theme.backgroundColor
-        scrollView?.drawsBackground = true
-        
-        textView?.backgroundColor = theme.backgroundColor
-        textView?.textColor = theme.textColor
-        textView?.insertionPointColor = theme.cursorColor
-        textView?.selectedTextAttributes = [
-            .backgroundColor: theme.selectionColor
-        ]
-        textView?.drawsBackground = true
+    func applyTheme(_ theme: ParchmentTheme, animated: Bool = true) {
+        // Save scroll position before theme change
+        let scrollPercentage = calculateScrollPercentage()
 
-        // Apply theme to reading progress indicator
-        readingProgressView?.applyTheme(theme)
+        if animated {
+            // Create smooth cross-fade transition
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.3
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                context.allowsImplicitAnimation = true
+
+                // Animate background colors
+                scrollView?.animator().backgroundColor = theme.backgroundColor
+                textView?.animator().backgroundColor = theme.backgroundColor
+
+                // Apply non-animatable properties
+                textView?.textColor = theme.textColor
+                textView?.insertionPointColor = theme.cursorColor
+                textView?.selectedTextAttributes = [
+                    .backgroundColor: theme.selectionColor
+                ]
+
+                // Apply theme to reading progress indicator
+                readingProgressView?.applyTheme(theme)
+
+            } completionHandler: { [weak self] in
+                // Rerender document after animation completes
+                self?.rerenderWithTheme(theme, scrollPercentage: scrollPercentage)
+            }
+        } else {
+            // Instant application (for initial load)
+            scrollView?.backgroundColor = theme.backgroundColor
+            textView?.backgroundColor = theme.backgroundColor
+            textView?.textColor = theme.textColor
+            textView?.insertionPointColor = theme.cursorColor
+            textView?.selectedTextAttributes = [
+                .backgroundColor: theme.selectionColor
+            ]
+            readingProgressView?.applyTheme(theme)
+            rerenderWithTheme(theme, scrollPercentage: scrollPercentage)
+        }
+
+        scrollView?.drawsBackground = true
+        textView?.drawsBackground = true
+    }
+
+    private func rerenderWithTheme(_ theme: ParchmentTheme, scrollPercentage: CGFloat) {
+        guard let document = currentDocument else { return }
+
+        // Use new renderer with updated theme
+        let renderer = EnhancedMarkdownRenderer(theme: theme, zoomLevel: zoomLevel)
+        let parsedDoc = Document(parsing: document.content)
+        let attributedString = renderer.render(parsedDoc)
+
+        // Set the new attributed string
+        textView?.textStorage?.setAttributedString(attributedString)
+        textView?.sizeToFit()
+
+        // Restore scroll position after layout
+        DispatchQueue.main.async { [weak self] in
+            self?.restoreScrollPercentage(scrollPercentage)
+        }
 
         // Force view updates
         scrollView?.needsDisplay = true
         textView?.needsDisplay = true
-        
-        // Theme is already persisted via ParchmentTheme.current setter
-        
-        // Rerender document with new theme
-        if let document = currentDocument {
-            // Use new renderer with updated theme
-            let renderer = EnhancedMarkdownRenderer(theme: theme, zoomLevel: zoomLevel)
-            let parsedDoc = Document(parsing: document.content)
-            let attributedString = renderer.render(parsedDoc)
-            
-            // Set the new attributed string
-            textView?.textStorage?.setAttributedString(attributedString)
-            textView?.sizeToFit()
-            textView?.needsDisplay = true
-        }
+    }
+
+    private func calculateScrollPercentage() -> CGFloat {
+        let documentHeight = textView.frame.height
+        let visibleRect = scrollView.contentView.visibleRect
+        let scrollableHeight = documentHeight - visibleRect.height
+
+        guard scrollableHeight > 0 else { return 0 }
+
+        return visibleRect.origin.y / scrollableHeight
+    }
+
+    private func restoreScrollPercentage(_ percentage: CGFloat) {
+        let documentHeight = textView.frame.height
+        let visibleHeight = scrollView.contentView.bounds.height
+        let scrollableHeight = documentHeight - visibleHeight
+
+        guard scrollableHeight > 0 else { return }
+
+        let targetY = scrollableHeight * percentage
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: targetY))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
     
     private func applyZoom() {
