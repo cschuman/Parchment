@@ -181,7 +181,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let viewMenu = NSMenu(title: "View")
         viewMenuItem.submenu = viewMenu
         
-        viewMenu.addItem(NSMenuItem(title: "Toggle Focus Mode", action: #selector(toggleFocusMode), keyEquivalent: ""))
+        let focusModeItem = NSMenuItem(title: "Toggle Focus Mode", action: #selector(toggleFocusMode), keyEquivalent: "f")
+        focusModeItem.keyEquivalentModifierMask = [.command, .shift]
+        viewMenu.addItem(focusModeItem)
         viewMenu.addItem(NSMenuItem(title: "Toggle Table of Contents", action: #selector(toggleTOC), keyEquivalent: "t"))
         viewMenu.addItem(NSMenuItem(title: "Show Reading Statistics", action: #selector(showStatistics), keyEquivalent: "/"))
         viewMenu.addItem(NSMenuItem.separator())
