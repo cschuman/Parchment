@@ -1,0 +1,86 @@
+{
+  "name": "parchment-preview",
+  "displayName": "Parchment Preview",
+  "description": "Open markdown files in Parchment - the beautiful native macOS markdown viewer",
+  "version": "1.0.0",
+  "publisher": "cschuman",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cschuman/Parchment"
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "preview",
+    "parchment",
+    "macos",
+    "native"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "parchment.openInParchment",
+        "title": "Open in Parchment",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "parchment.openInParchmentNewWindow",
+        "title": "Open in Parchment (New Window)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "parchment.openInParchment",
+          "when": "resourceLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "parchment.openInParchment",
+          "when": "resourceLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "parchment.openInParchment",
+          "when": "resourceExtname == .md || resourceExtname == .markdown",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "parchment.openInParchment",
+        "key": "cmd+shift+p cmd+m",
+        "when": "resourceLangId == markdown"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "typescript": "^5.2.0"
+  }
+}
