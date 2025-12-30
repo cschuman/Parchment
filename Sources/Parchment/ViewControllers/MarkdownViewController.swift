@@ -25,6 +25,10 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     private var typewriterManager: TypewriterScrollManager?
     private var statisticsManager: ReadingStatisticsManager?
     private var navigationCoordinator: NavigationCoordinator?
+
+    // Reading position restoration
+    private var savePositionTimer: Timer?
+    private var isRestoringPosition = false
     
     weak var statusBarDelegate: StatusBarDelegate?
     
@@ -203,8 +207,8 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
                 // Ensure text view is sized properly
                 self.textView.sizeToFit()
 
-                // Scroll to top
-                self.textView.scrollToBeginningOfDocument(nil)
+                // Restore saved reading position or scroll to top
+                self.restoreScrollPosition()
 
                 // Force update
                 self.textView.needsDisplay = true
@@ -422,7 +426,111 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     }
     
     @objc private func scrollViewDidScroll(_ notification: Notification) {
-        // Scroll notification handled - can be extended for features like progress tracking
+        // Don't save position while restoring
+        guard !isRestoringPosition else { return }
+
+        // Debounce position saving (500ms after scroll stops)
+        savePositionTimer?.invalidate()
+        savePositionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            self?.saveCurrentScrollPosition()
+        }
+    }
+
+    private func saveCurrentScrollPosition() {
+        guard let url = currentDocument?.url else { return }
+
+        let documentHeight = textView.frame.height
+        let visibleRect = scrollView.contentView.visibleRect
+        let scrollableHeight = documentHeight - visibleRect.height
+
+        guard scrollableHeight > 0 else { return }
+
+        let percentage = visibleRect.origin.y / scrollableHeight
+        let clampedPercentage = min(max(percentage, 0), 1)
+
+        ReadingPositionManager.shared.save(url: url, percentage: clampedPercentage)
+    }
+
+    private func restoreScrollPosition() {
+        guard let url = currentDocument?.url,
+              let percentage = ReadingPositionManager.shared.position(for: url),
+              percentage > 0.01 else {
+            // No saved position, scroll to top
+            textView.scrollToBeginningOfDocument(nil)
+            return
+        }
+
+        isRestoringPosition = true
+
+        // Delay slightly to ensure content is fully laid out
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+
+            let documentHeight = self.textView.frame.height
+            let visibleRect = self.scrollView.contentView.visibleRect
+            let scrollableHeight = documentHeight - visibleRect.height
+
+            guard scrollableHeight > 0 else {
+                self.isRestoringPosition = false
+                return
+            }
+
+            let targetY = scrollableHeight * percentage
+            let targetPoint = NSPoint(x: 0, y: targetY)
+
+            // Animate scroll to restored position
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.4
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                self.scrollView.contentView.animator().setBoundsOrigin(targetPoint)
+            }, completionHandler: { [weak self] in
+                self?.isRestoringPosition = false
+                self?.showResumedToast(percentage: percentage)
+            })
+        }
+    }
+
+    private func showResumedToast(percentage: Double) {
+        let percentText = Int(percentage * 100)
+        guard percentText > 0 else { return }
+
+        let toast = NSTextField(labelWithString: "Resumed at \(percentText)%")
+        toast.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        toast.textColor = .white
+        toast.backgroundColor = NSColor.black.withAlphaComponent(0.75)
+        toast.isBezeled = false
+        toast.drawsBackground = true
+        toast.alignment = .center
+        toast.wantsLayer = true
+        toast.layer?.cornerRadius = 6
+
+        toast.sizeToFit()
+        toast.frame.size.width += 24
+        toast.frame.size.height += 12
+
+        // Position at bottom center
+        let viewBounds = view.bounds
+        toast.frame.origin.x = (viewBounds.width - toast.frame.width) / 2
+        toast.frame.origin.y = 40
+
+        toast.alphaValue = 0
+        view.addSubview(toast)
+
+        // Fade in
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            toast.animator().alphaValue = 1.0
+        }
+
+        // Fade out after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.3
+                toast.animator().alphaValue = 0
+            }, completionHandler: {
+                toast.removeFromSuperview()
+            })
+        }
     }
 
     @objc private func preferencesChanged() {
