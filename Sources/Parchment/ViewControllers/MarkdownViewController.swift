@@ -27,6 +27,11 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     private var navigationCoordinator: NavigationCoordinator?
     private var readingProgressView: ReadingProgressView?
 
+    // Link hover preview
+    private var linkTooltip: LinkPreviewTooltip?
+    private var linkHoverTimer: Timer?
+    private var trackingArea: NSTrackingArea?
+
     // Reading position restoration
     private var savePositionTimer: Timer?
     private var isRestoringPosition = false
@@ -159,9 +164,87 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
                 progressView.widthAnchor.constraint(equalToConstant: 12)
             ])
         }
+
+        // Setup link hover tooltip
+        linkTooltip = LinkPreviewTooltip(theme: ParchmentTheme.current)
+
+        // Setup mouse tracking for link hovers
+        setupLinkTracking()
     }
-    
-    
+
+    private func setupLinkTracking() {
+        // Create tracking area for mouse movement
+        let options: NSTrackingArea.Options = [.mouseMoved, .mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect]
+        trackingArea = NSTrackingArea(rect: .zero, options: options, owner: self, userInfo: nil)
+        if let area = trackingArea {
+            textView.addTrackingArea(area)
+        }
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        handleMouseMovement(event)
+    }
+
+    private func handleMouseMovement(_ event: NSEvent) {
+        // Convert event location to text view coordinates
+        let windowPoint = event.locationInWindow
+        let textViewPoint = textView.convert(windowPoint, from: nil)
+
+        // Check if over a link
+        if let url = linkAt(point: textViewPoint) {
+            scheduleLinkTooltip(url: url, at: textViewPoint)
+        } else {
+            cancelLinkTooltip()
+        }
+    }
+
+    private func linkAt(point: NSPoint) -> URL? {
+        // Get character index at point
+        guard let layoutManager = textView.layoutManager,
+              let textContainer = textView.textContainer else { return nil }
+
+        // Adjust point for text container inset
+        let adjustedPoint = NSPoint(
+            x: point.x - textView.textContainerInset.width,
+            y: point.y - textView.textContainerInset.height
+        )
+
+        let characterIndex = layoutManager.characterIndex(for: adjustedPoint, in: textContainer, fractionOfDistanceBetweenInsertionPoints: nil)
+
+        guard characterIndex < textView.textStorage?.length ?? 0 else { return nil }
+
+        // Check for link attribute
+        if let link = textView.textStorage?.attribute(.link, at: characterIndex, effectiveRange: nil) {
+            if let url = link as? URL {
+                return url
+            } else if let urlString = link as? String, let url = URL(string: urlString) {
+                return url
+            }
+        }
+
+        return nil
+    }
+
+    private func scheduleLinkTooltip(url: URL, at point: NSPoint) {
+        // Cancel existing timer
+        linkHoverTimer?.invalidate()
+
+        // Schedule new tooltip after delay
+        linkHoverTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            self?.showLinkTooltip(url: url, at: point)
+        }
+    }
+
+    private func showLinkTooltip(url: URL, at point: NSPoint) {
+        linkTooltip?.show(url: url, near: point, in: textView)
+    }
+
+    private func cancelLinkTooltip() {
+        linkHoverTimer?.invalidate()
+        linkHoverTimer = nil
+        linkTooltip?.hide()
+    }
+
     internal func navigateToNextHeader() {
         navigationCoordinator?.navigateToNextHeader()
     }
@@ -479,6 +562,9 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
                 // Apply theme to reading progress indicator
                 readingProgressView?.applyTheme(theme)
 
+                // Apply theme to link tooltip
+                linkTooltip?.applyTheme(theme)
+
             } completionHandler: { [weak self] in
                 // Rerender document after animation completes
                 self?.rerenderWithTheme(theme, scrollPercentage: scrollPercentage)
@@ -493,6 +579,7 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
                 .backgroundColor: theme.selectionColor
             ]
             readingProgressView?.applyTheme(theme)
+            linkTooltip?.applyTheme(theme)
             rerenderWithTheme(theme, scrollPercentage: scrollPercentage)
         }
 
