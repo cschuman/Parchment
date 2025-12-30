@@ -109,6 +109,7 @@ final class ImageLoader: NSObject {
         config.timeoutIntervalForResource = Self.requestTimeout * 2
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.httpMaximumConnectionsPerHost = 4
+        config.waitsForConnectivity = false  // Fail fast, don't wait for network
 
         // Use delegate to validate resolved IP addresses (DNS rebinding protection)
         session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
@@ -116,6 +117,10 @@ final class ImageLoader: NSObject {
         // Configure NSCache limits
         imageCache.countLimit = Self.maxCacheCount
         imageCache.totalCostLimit = Self.maxCacheCost
+
+        // NSCache automatically handles memory pressure on macOS via evictsObjectsWithDiscardedContent
+        // Setting the delegate allows us to respond when objects are about to be evicted
+        imageCache.delegate = self
     }
 
     deinit {
@@ -403,6 +408,59 @@ extension ImageLoader: URLSessionTaskDelegate {
         }
 
         completionHandler(request)
+    }
+
+    /// DNS rebinding protection: Validate the resolved IP address after connection
+    /// This catches cases where DNS resolves to a different IP than initially validated
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didFinishCollecting metrics: URLSessionTaskMetrics
+    ) {
+        // Check each transaction for private IP addresses
+        for transaction in metrics.transactionMetrics {
+            guard let remoteAddress = transaction.remoteAddress else { continue }
+
+            // Parse IP from address string (format: "1.2.3.4:443" or "[::1]:443")
+            let ip = parseIPFromAddress(remoteAddress)
+
+            if isPrivateIPAddress(ip) {
+                Logger.warning("DNS rebinding detected: resolved to private IP \(ip)")
+                task.cancel()
+                return
+            }
+        }
+    }
+
+    /// Parse IP address from socket address string
+    private func parseIPFromAddress(_ address: String) -> String {
+        // Handle IPv6: [::1]:443 -> ::1
+        if address.hasPrefix("[") {
+            if let endBracket = address.firstIndex(of: "]") {
+                return String(address[address.index(after: address.startIndex)..<endBracket])
+            }
+        }
+
+        // Handle IPv4: 1.2.3.4:443 -> 1.2.3.4
+        if let colonIndex = address.lastIndex(of: ":") {
+            // Make sure this is a port separator, not part of IPv6
+            let beforeColon = address[..<colonIndex]
+            if !beforeColon.contains(":") {
+                return String(beforeColon)
+            }
+        }
+
+        return address
+    }
+}
+
+// MARK: - NSCacheDelegate
+
+extension ImageLoader: NSCacheDelegate {
+    func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: Any) {
+        // Called when the system is evicting objects due to memory pressure
+        // This is purely informational - the eviction will happen regardless
+        Logger.info("Image cache evicting object due to memory pressure")
     }
 }
 

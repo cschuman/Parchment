@@ -165,6 +165,9 @@ final class EnhancedMarkdownRenderer {
     }
 
     private func replaceEmojiShortcodes(in text: String) -> String {
+        // Fast path: skip processing if no colon present (most text won't have emoji shortcodes)
+        guard text.contains(":") else { return text }
+
         var result = text
         for (shortcode, emoji) in emojiShortcodes {
             result = result.replacingOccurrences(of: shortcode, with: emoji)
@@ -306,19 +309,22 @@ final class EnhancedMarkdownRenderer {
         }
     }
 
+    /// Allowed URL schemes (allowlist for security - blocks javascript:, data:, file:, etc.)
+    private static let allowedURLSchemes: Set<String> = ["http", "https", "mailto"]
+
     private func visitLink(_ link: Link, context: RenderContext) {
         let savedColor = context.currentAttributes[.foregroundColor]
         context.currentAttributes[.foregroundColor] = theme.linkColor
         context.currentAttributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
 
         if let destination = link.destination {
-            // Block dangerous URL schemes (XSS prevention)
-            let lowercaseDestination = destination.lowercased()
-            if !lowercaseDestination.hasPrefix("javascript:") &&
-               !lowercaseDestination.hasPrefix("data:") &&
-               !lowercaseDestination.hasPrefix("vbscript:") {
-                context.currentAttributes[.link] = URL(string: destination)
+            // Security: Use allowlist for URL schemes instead of blocklist
+            if let url = URL(string: destination),
+               let scheme = url.scheme?.lowercased(),
+               Self.allowedURLSchemes.contains(scheme) {
+                context.currentAttributes[.link] = url
             }
+            // Links with blocked schemes are rendered as text only (no clickable link)
         }
 
         for child in link.children {

@@ -21,6 +21,14 @@ final class MainWindowController: NSWindowController {
         TouchBarController(windowController: self)
     }()
 
+    // MARK: - Lifecycle
+
+    deinit {
+        // Clean up file watcher to release dispatch source and file descriptor
+        fileWatcher?.stop()
+        fileWatcher = nil
+    }
+
     // Reading Mode state
     private var isReadingMode = false
     private var savedToolbarVisible = true

@@ -9,10 +9,13 @@ final class DocumentCache {
     private var documentPaths: Set<String> = []  // Track keys for iteration
 
     private static let maxCacheCount = 10
+    private static let maxCacheCost = 100 * 1024 * 1024  // 100MB total cost limit
     private static let persistenceKey = "DocumentCacheMetadata"
 
-    init() {
+    /// Private init enforces singleton pattern - use DocumentCache.shared
+    private init() {
         cache.countLimit = Self.maxCacheCount
+        cache.totalCostLimit = Self.maxCacheCost
         restoreMetadata()
     }
 
@@ -57,7 +60,12 @@ final class DocumentCache {
             timestamp: Date()
         )
 
-        cache.setObject(wrapper, forKey: url.path as NSString)
+        // Estimate cost based on content size (document + rendered if present)
+        let contentCost = document.content.utf8.count
+        let renderedCost = rendered?.length ?? 0
+        let totalCost = contentCost + (renderedCost * 2)  // Attributed strings use ~2 bytes per character
+
+        cache.setObject(wrapper, forKey: url.path as NSString, cost: totalCost)
 
         metadataQueue.async(flags: .barrier) { [weak self] in
             self?.documentPaths.insert(url.path)
@@ -89,7 +97,12 @@ final class DocumentCache {
             timestamp: Date()
         )
 
-        cache.setObject(updated, forKey: url.path as NSString)
+        // Preserve estimated cost
+        let contentCost = existing.document.content.utf8.count
+        let renderedCost = existing.rendered?.length ?? 0
+        let totalCost = contentCost + (renderedCost * 2)
+
+        cache.setObject(updated, forKey: url.path as NSString, cost: totalCost)
     }
 
     func updateZoomLevel(for url: URL, zoomLevel: CGFloat) {
@@ -103,7 +116,12 @@ final class DocumentCache {
             timestamp: Date()
         )
 
-        cache.setObject(updated, forKey: url.path as NSString)
+        // Preserve estimated cost
+        let contentCost = existing.document.content.utf8.count
+        let renderedCost = existing.rendered?.length ?? 0
+        let totalCost = contentCost + (renderedCost * 2)
+
+        cache.setObject(updated, forKey: url.path as NSString, cost: totalCost)
     }
 
     func removeDocument(for url: URL) {

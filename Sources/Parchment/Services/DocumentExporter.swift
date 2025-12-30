@@ -92,8 +92,20 @@ final class DocumentExporter {
             throw ExportError.invalidOutputPath
         }
 
-        // Path must not contain shell metacharacters or control characters
         let path = url.path
+        let filename = url.lastPathComponent
+
+        // Block filenames starting with dash (command-line flag injection prevention)
+        if filename.hasPrefix("-") {
+            throw ExportError.invalidOutputPath
+        }
+
+        // Block paths containing equals sign (argument injection prevention)
+        if path.contains("=") {
+            throw ExportError.invalidOutputPath
+        }
+
+        // Path must not contain shell metacharacters or control characters
         let dangerousChars = CharacterSet(charactersIn: ";|&$`\"'\\<>(){}[]!#~\0\n\r")
         if path.unicodeScalars.contains(where: { dangerousChars.contains($0) }) {
             throw ExportError.invalidOutputPath

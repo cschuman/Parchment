@@ -105,27 +105,23 @@ final class CodeSyntaxHighlighter: SyntaxHighlighting {
 
 extension CodeSyntaxHighlighter {
     
+    // Pre-computed combined patterns for O(1) instead of O(n) regex applications
+    private static let swiftKeywordsPattern = "\\b(func|var|let|if|else|for|while|return|class|struct|enum|protocol|extension|import|private|public|internal|static|override|init|self|super|nil|true|false|try|catch|throw|async|await|actor)\\b"
+    private static let swiftTypesPattern = "\\b(String|Int|Double|Float|Bool|Array|Dictionary|Set|Optional|Any|AnyObject|NSString|NSAttributedString|NSFont|NSColor|NSView|NSViewController|NSWindow)\\b"
+
     private func highlightSwift(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
             .foregroundColor: textColor,
             .backgroundColor: backgroundColor
         ])
-        
-        // Keywords
-        let keywords = ["func", "var", "let", "if", "else", "for", "while", "return", "class", "struct", "enum", "protocol", "extension", "import", "private", "public", "internal", "static", "override", "init", "self", "super", "nil", "true", "false", "try", "catch", "throw", "async", "await", "actor"]
-        
-        for keyword in keywords {
-            highlightPattern("\\b\(keyword)\\b", in: result, color: colors.keyword, font: baseFont)
-        }
-        
-        // Types
-        let types = ["String", "Int", "Double", "Float", "Bool", "Array", "Dictionary", "Set", "Optional", "Any", "AnyObject", "NSString", "NSAttributedString", "NSFont", "NSColor", "NSView", "NSViewController", "NSWindow"]
-        
-        for type in types {
-            highlightPattern("\\b\(type)\\b", in: result, color: colors.type, font: baseFont)
-        }
-        
+
+        // Keywords - single combined pattern instead of loop
+        highlightPattern(Self.swiftKeywordsPattern, in: result, color: colors.keyword, font: baseFont)
+
+        // Types - single combined pattern instead of loop
+        highlightPattern(Self.swiftTypesPattern, in: result, color: colors.type, font: baseFont)
+
         // Strings
         highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
 
@@ -142,20 +138,18 @@ extension CodeSyntaxHighlighter {
         return result
     }
 
+    private static let jsKeywordsPattern = "\\b(function|var|let|const|if|else|for|while|return|class|extends|import|export|default|new|this|super|null|undefined|true|false|try|catch|throw|async|await|yield|typeof|instanceof|delete|void)\\b"
+
     private func highlightJavaScript(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
             .foregroundColor: textColor,
             .backgroundColor: backgroundColor
         ])
-        
-        // Keywords
-        let keywords = ["function", "var", "let", "const", "if", "else", "for", "while", "return", "class", "extends", "import", "export", "default", "new", "this", "super", "null", "undefined", "true", "false", "try", "catch", "throw", "async", "await", "yield", "typeof", "instanceof", "delete", "void"]
-        
-        for keyword in keywords {
-            highlightPattern("\\b\(keyword)\\b", in: result, color: colors.keyword, font: baseFont)
-        }
-        
+
+        // Keywords - single combined pattern
+        highlightPattern(Self.jsKeywordsPattern, in: result, color: colors.keyword, font: baseFont)
+
         // Strings (single and double quotes)
         highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
         highlightPattern("'[^'\\n]*'", in: result, color: colors.string, font: baseFont)
@@ -174,42 +168,37 @@ extension CodeSyntaxHighlighter {
         return result
     }
 
+    private static let pythonKeywordsPattern = "\\b(def|class|if|elif|else|for|while|return|import|from|as|try|except|finally|with|lambda|yield|assert|break|continue|del|global|nonlocal|pass|raise|and|or|not|in|is|None|True|False)\\b"
+    private static let pythonBuiltinsPattern = "\\b(print|len|range|str|int|float|list|dict|set|tuple|bool|type|isinstance|open|file|input|map|filter|reduce|zip|enumerate|sorted|reversed)\\b"
+
     private func highlightPython(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
             .foregroundColor: textColor,
             .backgroundColor: backgroundColor
         ])
-        
-        // Keywords
-        let keywords = ["def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "as", "try", "except", "finally", "with", "lambda", "yield", "assert", "break", "continue", "del", "global", "nonlocal", "pass", "raise", "and", "or", "not", "in", "is", "None", "True", "False"]
-        
-        for keyword in keywords {
-            highlightPattern("\\b\(keyword)\\b", in: result, color: colors.keyword, font: baseFont)
-        }
-        
-        // Built-in functions
-        let builtins = ["print", "len", "range", "str", "int", "float", "list", "dict", "set", "tuple", "bool", "type", "isinstance", "open", "file", "input", "map", "filter", "reduce", "zip", "enumerate", "sorted", "reversed"]
-        
-        for builtin in builtins {
-            highlightPattern("\\b\(builtin)\\b", in: result, color: colors.function, font: baseFont)
-        }
-        
+
+        // Keywords - single combined pattern
+        highlightPattern(Self.pythonKeywordsPattern, in: result, color: colors.keyword, font: baseFont)
+
+        // Built-in functions - single combined pattern
+        highlightPattern(Self.pythonBuiltinsPattern, in: result, color: colors.function, font: baseFont)
+
         // Strings (single and double quotes, including triple quotes)
         highlightPattern("\"\"\"[^\"]*\"\"\"", in: result, color: colors.string, font: baseFont)
         highlightPattern("'''[^']*'''", in: result, color: colors.string, font: baseFont)
         highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
         highlightPattern("'[^'\\n]*'", in: result, color: colors.string, font: baseFont)
-        
+
         // Comments
         highlightPattern("#.*$", in: result, color: colors.comment, font: baseFont, options: [.anchorsMatchLines])
-        
+
         // Numbers
         highlightPattern("\\b\\d+(\\.\\d+)?\\b", in: result, color: colors.number, font: baseFont)
-        
+
         // Decorators
         highlightPattern("@\\w+", in: result, color: colors.keyword, font: baseFont)
-        
+
         return result
     }
     

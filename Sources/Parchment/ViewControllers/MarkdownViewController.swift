@@ -57,13 +57,18 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         savePositionTimer?.invalidate()
         savePositionTimer = nil
 
-        // Remove notification observers
-        NotificationCenter.default.removeObserver(self)
+        // Clean up link tooltip explicitly
+        linkTooltip?.hide()
+        linkTooltip = nil
 
         // Remove tracking area if present
         if let area = trackingArea {
             textView?.removeTrackingArea(area)
+            trackingArea = nil
         }
+
+        // Remove notification observers
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func loadView() {
@@ -206,6 +211,12 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     }
 
     private func setupLinkTracking() {
+        // Remove old tracking area if present (safe to call multiple times)
+        if let oldArea = trackingArea {
+            textView.removeTrackingArea(oldArea)
+            trackingArea = nil
+        }
+
         // Create tracking area for mouse movement
         let options: NSTrackingArea.Options = [.mouseMoved, .mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect]
         trackingArea = NSTrackingArea(rect: .zero, options: options, owner: self, userInfo: nil)
