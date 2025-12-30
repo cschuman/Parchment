@@ -44,6 +44,18 @@ final class ImageLoader: NSObject {
     private static let maxCacheCount: Int = 100
     private static let maxCacheCost: Int = 50 * 1024 * 1024  // 50MB cache limit
 
+    /// Allowed image content types (SVG blocked - can contain JavaScript)
+    private static let allowedContentTypes: Set<String> = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/bmp",
+        "image/tiff"
+        // Note: image/svg+xml intentionally excluded (XSS risk)
+    ]
+
     // MARK: - Properties
 
     private var session: URLSession!
@@ -106,6 +118,11 @@ final class ImageLoader: NSObject {
         imageCache.totalCostLimit = Self.maxCacheCost
     }
 
+    deinit {
+        // Cancel pending requests and release URLSession resources
+        session.invalidateAndCancel()
+    }
+
     // MARK: - Public Interface
 
     func loadImage(from url: URL) async -> NSImage? {
@@ -143,10 +160,14 @@ final class ImageLoader: NSObject {
                 return .failure(.httpError(httpResponse.statusCode))
             }
 
-            // Validate content type
-            if let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type"),
-               !contentType.hasPrefix("image/") {
-                return .failure(.invalidContentType(contentType))
+            // Validate content type against whitelist (SVG blocked for XSS prevention)
+            if let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type") {
+                let mimeType = contentType.split(separator: ";")[0]
+                    .trimmingCharacters(in: .whitespaces)
+                    .lowercased()
+                guard Self.allowedContentTypes.contains(mimeType) else {
+                    return .failure(.invalidContentType(contentType))
+                }
             }
 
             // Validate size (double-check after download)

@@ -3,17 +3,22 @@ import Foundation
 struct AppVersion {
     static let current = Version(major: 1, minor: 3, patch: 0, build: getBuildNumber())
 
-    // MARK: - Cached DateFormatters (expensive to create)
+    // MARK: - Thread-Safe Cached DateFormatters
+
+    /// Lock for thread-safe DateFormatter access (DateFormatter is not thread-safe)
+    private static let formatterLock = NSLock()
 
     private static let buildNumberFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd.HHmm"
+        formatter.timeZone = TimeZone(abbreviation: "UTC")
         return formatter
     }()
 
     private static let changelogDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
+        formatter.timeZone = TimeZone(abbreviation: "UTC")
         return formatter
     }()
 
@@ -33,7 +38,9 @@ struct AppVersion {
     }
 
     static func getBuildNumber() -> String {
-        // Use current date and time as build number
+        // Thread-safe access to DateFormatter
+        formatterLock.lock()
+        defer { formatterLock.unlock() }
         return buildNumberFormatter.string(from: Date())
     }
     
@@ -100,7 +107,9 @@ struct AppVersion {
         let changes: [String]
 
         var formattedDate: String {
-            // Use cached formatter from parent struct
+            // Thread-safe access to DateFormatter
+            AppVersion.formatterLock.lock()
+            defer { AppVersion.formatterLock.unlock() }
             return AppVersion.changelogDateFormatter.string(from: date)
         }
     }

@@ -5,7 +5,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowController: MainWindowController?
     var preferencesWindowController: PreferencesWindowController?
     private let recentDocumentsManager = RecentDocumentsManager()
-    var documentCache = DocumentCache()
+    var documentCache: DocumentCache { DocumentCache.shared }  // Use singleton
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Write to stderr which is unbuffered
@@ -137,6 +137,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
+        // Remove KVO observer to prevent crashes during shutdown
+        NSApp.removeObserver(self, forKeyPath: "effectiveAppearance")
+
+        // Remove notification observers
+        NotificationCenter.default.removeObserver(self)
+
         recentDocumentsManager.persist()
         documentCache.persistMetadata()
     }
@@ -673,31 +679,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Path Validation
 
+    /// Shared list of valid markdown file extensions
+    private static let validMarkdownExtensions = ["md", "markdown", "mdown", "mkd", "mkdown", "mdwn", "mdtxt", "mdtext", "text", "txt"]
+
+    /// Blocked system directory prefixes for security
+    private static let blockedPathPrefixes = [
+        "/System",
+        "/Library/Keychains",
+        "/Library/Application Support",
+        "/private/etc",
+        "/private/var",
+        "/etc",
+        "/var",  // Block entire /var tree (was missing)
+        "/usr/local/etc",
+        "/dev",
+        "/sbin",
+        "/bin"
+    ]
+
     /// Validates CLI-provided paths to ensure they are safe to open
     private func validateCLIPath(_ url: URL) -> Bool {
+        let originalPath = url.path
         let resolvedPath = url.resolvingSymlinksInPath().path
 
         // Validate file extension
-        let validExtensions = ["md", "markdown", "mdown", "mkd", "mkdown", "mdwn", "mdtxt", "mdtext", "text", "txt"]
-        guard validExtensions.contains(url.pathExtension.lowercased()) else {
+        guard Self.validMarkdownExtensions.contains(url.pathExtension.lowercased()) else {
             Logger.warning("Invalid file extension: \(url.pathExtension)")
             return false
         }
 
-        // Block access to sensitive system directories
-        let blockedPrefixes = [
-            "/System",
-            "/Library/Keychains",
-            "/private/etc",
-            "/private/var",
-            "/etc",
-            "/var/root",
-            "/usr/local/etc"
-        ]
-
-        for prefix in blockedPrefixes {
+        // Check BOTH original and resolved paths against blocked prefixes
+        // This prevents symlink bypass attacks
+        for prefix in Self.blockedPathPrefixes {
+            if originalPath.hasPrefix(prefix + "/") || originalPath == prefix {
+                Logger.warning("Blocked access to sensitive path (original): \(originalPath)")
+                return false
+            }
             if resolvedPath.hasPrefix(prefix + "/") || resolvedPath == prefix {
-                Logger.warning("Blocked access to sensitive path: \(resolvedPath)")
+                Logger.warning("Blocked access to sensitive path (resolved): \(resolvedPath)")
                 return false
             }
         }
@@ -705,6 +724,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Ensure file exists
         guard FileManager.default.fileExists(atPath: resolvedPath) else {
             Logger.warning("File does not exist: \(resolvedPath)")
+            return false
+        }
+
+        // Verify it's a regular file (not directory, socket, device, etc.)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            Logger.warning("Path is not a regular file: \(resolvedPath)")
             return false
         }
 
