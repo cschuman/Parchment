@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.parchment.alfred</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>E0A1B2C3-D4E5-F6A7-B8C9-D0E1F2A3B4C5</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F1A2B3C4-D5E6-F7A8-B9C0-D1E2F3A4B5C6</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>Parchment</string>
+	<key>description</key>
+	<string>Open markdown files in Parchment</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Parchment</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>keyword</key>
+				<string>md</string>
+				<key>subtext</key>
+				<string>Search for markdown files to open in Parchment</string>
+				<key>text</key>
+				<string>Open in Parchment</string>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.keyword</string>
+			<key>uid</key>
+			<string>E0A1B2C3-D4E5-F6A7-B8C9-D0E1F2A3B4C5</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>open -a Parchment "{query}"</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>F1A2B3C4-D5E6-F7A8-B9C0-D1E2F3A4B5C6</string>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>## Parchment Alfred Workflow
+
+### Usage
+- Type `md` followed by a space and filename to search for markdown files
+- Select a file to open it in Parchment
+
+### Requirements
+- Parchment must be installed in /Applications
+
+### Installation
+1. Double-click the workflow file to install
+2. Or drag into Alfred Preferences > Workflows</string>
+	<key>uidata</key>
+	<dict>
+		<key>E0A1B2C3-D4E5-F6A7-B8C9-D0E1F2A3B4C5</key>
+		<dict>
+			<key>xpos</key>
+			<integer>100</integer>
+			<key>ypos</key>
+			<integer>100</integer>
+		</dict>
+		<key>F1A2B3C4-D5E6-F7A8-B9C0-D1E2F3A4B5C6</key>
+		<dict>
+			<key>xpos</key>
+			<integer>300</integer>
+			<key>ypos</key>
+			<integer>100</integer>
+		</dict>
+	</dict>
+	<key>version</key>
+	<string>1.0.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/cschuman/Parchment</string>
+</dict>
+</plist>

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "parchment",
+  "title": "Parchment",
+  "description": "Open markdown files in Parchment - the beautiful native macOS markdown viewer",
+  "icon": "icon.png",
+  "author": "cschuman",
+  "categories": ["Productivity", "Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "open-in-parchment",
+      "title": "Open in Parchment",
+      "subtitle": "Parchment",
+      "description": "Open the selected markdown file in Parchment",
+      "mode": "no-view"
+    },
+    {
+      "name": "open-recent",
+      "title": "Open Recent Markdown",
+      "subtitle": "Parchment",
+      "description": "Open a recently edited markdown file in Parchment",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.55.0"
+  },
+  "devDependencies": {
+    "@types/node": "18.8.3",
+    "@types/react": "18.0.9",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "ray lint"
+  }
+}
