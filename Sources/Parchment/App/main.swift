@@ -1,16 +1,11 @@
 import Cocoa
 
-// Disable Touch Bar before creating NSApplication
-if #available(macOS 10.12.2, *) {
-    UserDefaults.standard.set(false, forKey: "NSApplicationTouchBarEnabled")
-}
-
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
 
-// Disable automatic Touch Bar
+// Enable Touch Bar customization menu item
 if #available(macOS 10.12.2, *) {
-    app.isAutomaticCustomizeTouchBarMenuItemEnabled = false
+    app.isAutomaticCustomizeTouchBarMenuItemEnabled = true
 }
 
 let delegate = AppDelegate()

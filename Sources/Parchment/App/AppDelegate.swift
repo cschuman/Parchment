@@ -9,10 +9,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Write to stderr which is unbuffered
-        
+
+        // Pre-initialize MathRenderer on main thread (WKWebView requires main thread)
+        _ = MathRenderer.shared
+
         // Register custom fonts
         FontManager.shared.registerCustomFonts()
-        
+
         setupMenuBar()
         setupEnhancedMenus()  // Add enhanced menus for new features
 

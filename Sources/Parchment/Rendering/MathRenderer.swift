@@ -33,14 +33,27 @@ final class MathRenderer {
     // MARK: - Initialization
 
     private init() {
-        let config = WKWebViewConfiguration()
-        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-
-        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600), configuration: config)
-        webView.navigationDelegate = nil
-
-        // Load KaTeX HTML template
-        loadKaTeXTemplate()
+        // WKWebView MUST be initialized on the main thread
+        if Thread.isMainThread {
+            let config = WKWebViewConfiguration()
+            config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+            webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600), configuration: config)
+            webView.navigationDelegate = nil
+            loadKaTeXTemplate()
+        } else {
+            // Initialize on main thread synchronously
+            var tempWebView: WKWebView!
+            DispatchQueue.main.sync {
+                let config = WKWebViewConfiguration()
+                config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+                tempWebView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600), configuration: config)
+                tempWebView.navigationDelegate = nil
+            }
+            webView = tempWebView
+            DispatchQueue.main.async { [weak self] in
+                self?.loadKaTeXTemplate()
+            }
+        }
     }
 
     // MARK: - Public Interface

@@ -47,8 +47,8 @@ final class CodeSyntaxHighlighter: SyntaxHighlighting {
         
         let backgroundAttributes: [NSAttributedString.Key: Any] = [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: theme.codeTextColor,
+            .backgroundColor: theme.codeBackgroundColor
         ]
         
         // Apply padding
@@ -60,7 +60,7 @@ final class CodeSyntaxHighlighter: SyntaxHighlighting {
             paddedResult.append(padding)
             
             if let lang = language?.lowercased(), !lang.isEmpty {
-                let highlightedLine = applySyntaxHighlighting(to: line, language: lang, baseFont: baseFont, colors: colors)
+                let highlightedLine = applySyntaxHighlighting(to: line, language: lang, baseFont: baseFont, colors: colors, textColor: theme.codeTextColor, backgroundColor: theme.codeBackgroundColor)
                 paddedResult.append(highlightedLine)
             } else {
                 paddedResult.append(NSAttributedString(string: line, attributes: backgroundAttributes))
@@ -75,26 +75,26 @@ final class CodeSyntaxHighlighter: SyntaxHighlighting {
         return paddedResult
     }
     
-    private func applySyntaxHighlighting(to code: String, language: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func applySyntaxHighlighting(to code: String, language: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let baseAttributes: [NSAttributedString.Key: Any] = [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ]
-        
+
         switch language {
         case "swift":
-            return highlightSwift(code, baseFont: baseFont, colors: colors)
+            return highlightSwift(code, baseFont: baseFont, colors: colors, textColor: textColor, backgroundColor: backgroundColor)
         case "javascript", "js":
-            return highlightJavaScript(code, baseFont: baseFont, colors: colors)
+            return highlightJavaScript(code, baseFont: baseFont, colors: colors, textColor: textColor, backgroundColor: backgroundColor)
         case "python", "py":
-            return highlightPython(code, baseFont: baseFont, colors: colors)
+            return highlightPython(code, baseFont: baseFont, colors: colors, textColor: textColor, backgroundColor: backgroundColor)
         case "json":
-            return highlightJSON(code, baseFont: baseFont, colors: colors)
+            return highlightJSON(code, baseFont: baseFont, colors: colors, textColor: textColor, backgroundColor: backgroundColor)
         case "html", "xml":
-            return highlightHTML(code, baseFont: baseFont, colors: colors)
+            return highlightHTML(code, baseFont: baseFont, colors: colors, textColor: textColor, backgroundColor: backgroundColor)
         case "css":
-            return highlightCSS(code, baseFont: baseFont, colors: colors)
+            return highlightCSS(code, baseFont: baseFont, colors: colors, textColor: textColor, backgroundColor: backgroundColor)
         default:
             return NSAttributedString(string: code, attributes: baseAttributes)
         }
@@ -105,11 +105,11 @@ final class CodeSyntaxHighlighter: SyntaxHighlighting {
 
 extension CodeSyntaxHighlighter {
     
-    private func highlightSwift(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func highlightSwift(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ])
         
         // Keywords
@@ -142,11 +142,11 @@ extension CodeSyntaxHighlighter {
         return result
     }
 
-    private func highlightJavaScript(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func highlightJavaScript(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ])
         
         // Keywords
@@ -174,11 +174,11 @@ extension CodeSyntaxHighlighter {
         return result
     }
 
-    private func highlightPython(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func highlightPython(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ])
         
         // Keywords
@@ -213,11 +213,11 @@ extension CodeSyntaxHighlighter {
         return result
     }
     
-    private func highlightJSON(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func highlightJSON(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ])
         
         // Property names
@@ -235,11 +235,11 @@ extension CodeSyntaxHighlighter {
         return result
     }
     
-    private func highlightHTML(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func highlightHTML(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ])
         
         // Tags
@@ -258,11 +258,11 @@ extension CodeSyntaxHighlighter {
         return result
     }
     
-    private func highlightCSS(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
+    private func highlightCSS(_ code: String, baseFont: NSFont, colors: SyntaxColors, textColor: NSColor, backgroundColor: NSColor) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.controlBackgroundColor
+            .foregroundColor: textColor,
+            .backgroundColor: backgroundColor
         ])
         
         // Selectors
