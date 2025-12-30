@@ -265,6 +265,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let wc = windowController {
             wc.loadDocument(at: url)
         } else {
+            Logger.error("Window controller unexpectedly nil when opening document")
         }
         NSApp.activate(ignoringOtherApps: true)
         
@@ -519,8 +520,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
            let urls = try? JSONDecoder().decode([URL].self, from: data) {
             recentDocuments = urls
             updateOpenRecentMenu()
-        } else {
         }
+        // No else needed - empty recent documents is a valid initial state
     }
     
     private func saveRecentDocuments() {
@@ -531,11 +532,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func showError(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "Error"
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        alert.runModal()
+        AlertHelper.showError(message)
     }
 }
 

@@ -154,6 +154,7 @@ class MainWindowController: NSWindowController {
                 if let mvc = self?.markdownViewController {
                     mvc.loadDocument(document)
                 } else {
+                    Logger.error("MarkdownViewController unexpectedly nil when loading document")
                 }
                 self?.tocViewController?.updateTableOfContents(for: document)
                 
@@ -346,15 +347,7 @@ class MainWindowController: NSWindowController {
     }
 
     private func showError(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "Error"
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        guard let window = window else {
-            _ = alert.runModal() // Fallback to modal if no window
-            return
-        }
-        alert.beginSheetModal(for: window) { _ in }
+        AlertHelper.showError(message, in: window)
     }
 }
 

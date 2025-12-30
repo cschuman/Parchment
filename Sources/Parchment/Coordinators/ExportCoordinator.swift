@@ -113,14 +113,6 @@ final class ExportCoordinator {
     }
 
     private func showError(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "Error"
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        guard let window = window else {
-            _ = alert.runModal()
-            return
-        }
-        alert.beginSheetModal(for: window) { _ in }
+        AlertHelper.showError(message, in: window)
     }
 }
