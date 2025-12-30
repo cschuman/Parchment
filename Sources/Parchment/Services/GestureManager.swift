@@ -10,14 +10,14 @@ enum NavigationDirection {
 
 /// Protocol for handling gesture-based interactions
 protocol GestureManagerDelegate: AnyObject {
-    func gestureManagerDidRequestZoom(_ manager: MarkdownGestureManager, to level: CGFloat)
-    func gestureManagerDidRequestNavigation(_ manager: MarkdownGestureManager, direction: NavigationDirection)
-    func gestureManagerDidToggleFocusMode(_ manager: MarkdownGestureManager)
-    func gestureManagerDidUpdateZoom(_ manager: MarkdownGestureManager, to level: CGFloat)
+    func gestureManagerDidRequestZoom(_ manager: GestureManager, to level: CGFloat)
+    func gestureManagerDidRequestNavigation(_ manager: GestureManager, direction: NavigationDirection)
+    func gestureManagerDidToggleFocusMode(_ manager: GestureManager)
+    func gestureManagerDidUpdateZoom(_ manager: GestureManager, to level: CGFloat)
 }
 
 /// Manages all gesture-based interactions for markdown viewing
-final class MarkdownGestureManager: NSObject {
+final class GestureManager: NSObject {
     
     // MARK: - Properties
     

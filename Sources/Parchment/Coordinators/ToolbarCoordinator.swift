@@ -7,8 +7,8 @@ protocol ToolbarActionDelegate: AnyObject {
     func showReadingStatistics()
 }
 
-/// Manages toolbar creation and item handling
-final class ToolbarManager: NSObject, NSToolbarDelegate {
+/// Coordinates toolbar creation and item handling
+final class ToolbarCoordinator: NSObject, NSToolbarDelegate {
 
     weak var actionDelegate: ToolbarActionDelegate?
 

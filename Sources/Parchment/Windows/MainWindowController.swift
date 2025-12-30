@@ -12,7 +12,7 @@ class MainWindowController: NSWindowController {
     private var findBarView: FindBarView?
     private var findBarCoordinator: FindBarCoordinator?
     private var dropView: DropView?
-    private let toolbarManager = ToolbarManager()
+    private let toolbarCoordinator = ToolbarCoordinator()
     private var exportCoordinator: ExportCoordinator?
     
     convenience init() {
@@ -29,9 +29,9 @@ class MainWindowController: NSWindowController {
         window.collectionBehavior = [.fullScreenPrimary, .managed]
         
         self.init(window: window)
-        toolbarManager.actionDelegate = self
+        toolbarCoordinator.actionDelegate = self
         exportCoordinator = ExportCoordinator(window: window)
-        window.toolbar = toolbarManager.createToolbar()
+        window.toolbar = toolbarCoordinator.createToolbar()
         window.delegate = self
         setupViews()
     }

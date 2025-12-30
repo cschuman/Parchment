@@ -17,7 +17,7 @@ Parchment is a native macOS markdown viewer application built with Swift and App
 ### Development
 ```bash
 # Quick debug build (fastest)
-./build_dev.sh
+./scripts/build/build_dev.sh
 
 # Standard debug build
 swift build
@@ -29,7 +29,7 @@ swift test
 ### Release
 ```bash
 # Build release version with app bundle
-./build_release.sh
+./scripts/build/build_release.sh
 
 # Build release executable only
 swift build -c release

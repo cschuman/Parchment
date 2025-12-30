@@ -1,7 +1,7 @@
 import Cocoa
 
-/// Handles all navigation within a markdown document
-final class DocumentNavigationCoordinator {
+/// Coordinates navigation within a markdown document
+final class NavigationCoordinator {
     
     // MARK: - Properties
     

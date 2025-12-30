@@ -14,10 +14,10 @@ class MarkdownViewController: NSViewController, ThemeApplicable {
     private var statisticsOverlay: StatisticsOverlayView?
 
     // Extracted components
-    private var gestureManager: MarkdownGestureManager?
+    private var gestureManager: GestureManager?
     private var typewriterManager: TypewriterScrollManager?
     private var statisticsManager: ReadingStatisticsManager?
-    private var navigationCoordinator: DocumentNavigationCoordinator?
+    private var navigationCoordinator: NavigationCoordinator?
     
     weak var statusBarDelegate: StatusBarDelegate?
     
@@ -123,7 +123,7 @@ class MarkdownViewController: NSViewController, ThemeApplicable {
         )
         
         // Setup gesture manager
-        gestureManager = MarkdownGestureManager(scrollView: scrollView)
+        gestureManager = GestureManager(scrollView: scrollView)
         gestureManager?.delegate = self
         
         // Setup typewriter scroll manager
@@ -133,7 +133,7 @@ class MarkdownViewController: NSViewController, ThemeApplicable {
         statisticsManager = ReadingStatisticsManager(parentView: view)
         
         // Setup navigation coordinator
-        navigationCoordinator = DocumentNavigationCoordinator(textView: textView, scrollView: scrollView)
+        navigationCoordinator = NavigationCoordinator(textView: textView, scrollView: scrollView)
     }
     
     
@@ -455,17 +455,17 @@ class MarkdownViewController: NSViewController, ThemeApplicable {
 // MARK: - GestureManagerDelegate
 
 extension MarkdownViewController: GestureManagerDelegate {
-    func gestureManagerDidRequestZoom(_ manager: MarkdownGestureManager, to level: CGFloat) {
+    func gestureManagerDidRequestZoom(_ manager: GestureManager, to level: CGFloat) {
         zoomLevel = level
         applyZoom()
     }
     
-    func gestureManagerDidUpdateZoom(_ manager: MarkdownGestureManager, to level: CGFloat) {
+    func gestureManagerDidUpdateZoom(_ manager: GestureManager, to level: CGFloat) {
         zoomLevel = level
         applyZoom()
     }
     
-    func gestureManagerDidRequestNavigation(_ manager: MarkdownGestureManager, direction: NavigationDirection) {
+    func gestureManagerDidRequestNavigation(_ manager: GestureManager, direction: NavigationDirection) {
         switch direction {
         case .next:
             navigateToNextHeader()
@@ -478,7 +478,7 @@ extension MarkdownViewController: GestureManagerDelegate {
         }
     }
     
-    func gestureManagerDidToggleFocusMode(_ manager: MarkdownGestureManager) {
+    func gestureManagerDidToggleFocusMode(_ manager: GestureManager) {
         toggleFocusMode()
     }
 }
