@@ -5,7 +5,7 @@ import WebKit
 // Type aliases to avoid ambiguity
 typealias MDText = Markdown.Text
 
-class MarkdownViewController: NSViewController {
+class MarkdownViewController: NSViewController, ThemeApplicable {
     private(set) var scrollView: NSScrollView!
     private(set) var textView: MarkdownTextView!
     private(set) var currentDocument: MarkdownDocument?

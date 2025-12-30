@@ -1,6 +1,5 @@
 import Cocoa
 import Markdown
-import UniformTypeIdentifiers
 
 class MainWindowController: NSWindowController {
     internal var markdownViewController: MarkdownViewController?
@@ -10,10 +9,11 @@ class MainWindowController: NSWindowController {
     private var contentStackView: NSStackView?
     private var currentDocument: MarkdownDocument?
     private var fileWatcher: FileWatcher?
-    private let documentExporter = DocumentExporter()
     private var findBarView: FindBarView?
-    private var findMatches: [NSRange] = []
+    private var findBarCoordinator: FindBarCoordinator?
     private var dropView: DropView?
+    private let toolbarManager = ToolbarManager()
+    private var exportCoordinator: ExportCoordinator?
     
     convenience init() {
         let window = NSWindow(
@@ -29,7 +29,9 @@ class MainWindowController: NSWindowController {
         window.collectionBehavior = [.fullScreenPrimary, .managed]
         
         self.init(window: window)
-        window.toolbar = createToolbar()
+        toolbarManager.actionDelegate = self
+        exportCoordinator = ExportCoordinator(window: window)
+        window.toolbar = toolbarManager.createToolbar()
         window.delegate = self
         setupViews()
     }
@@ -81,9 +83,11 @@ class MainWindowController: NSWindowController {
         
         // Create find bar (initially hidden)
         findBarView = FindBarView()
-        findBarView?.delegate = self
         findBarView?.isHidden = true
         findBarView?.translatesAutoresizingMaskIntoConstraints = false
+
+        // Create find bar coordinator
+        findBarCoordinator = FindBarCoordinator(findBarView: findBarView, markdownViewController: markdownViewController)
         
         // Create drop view as the main container
         dropView = DropView(frame: .zero)
@@ -116,14 +120,6 @@ class MainWindowController: NSWindowController {
         ])
         
         tocViewController?.view.isHidden = true
-    }
-    
-    private func createToolbar() -> NSToolbar {
-        let toolbar = NSToolbar(identifier: "MainToolbar")
-        toolbar.delegate = self
-        toolbar.displayMode = .iconOnly
-        toolbar.allowsUserCustomization = true
-        return toolbar
     }
     
     func loadDocument(at url: URL) {
@@ -346,94 +342,7 @@ class MainWindowController: NSWindowController {
             showError("No document to export")
             return
         }
-        
-        let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = contentTypes(for: format)
-        savePanel.canCreateDirectories = true
-        savePanel.nameFieldStringValue = (document.url?.deletingPathExtension().lastPathComponent ?? "Untitled") + fileExtension(for: format)
-        
-        guard let window = window else { return }
-        savePanel.beginSheetModal(for: window) { [weak self] response in
-            guard response == .OK, let url = savePanel.url else { return }
-            
-            Task {
-                do {
-                    let options = self?.createExportOptions(for: format) ?? ExportOptions()
-                    try await self?.documentExporter.export(document: document, to: format, at: url, options: options)
-                    
-                    await MainActor.run {
-                        self?.showExportSuccess(url: url)
-                    }
-                } catch {
-                    await MainActor.run {
-                        self?.showError("Export failed: \(error.localizedDescription)")
-                    }
-                }
-            }
-        }
-    }
-    
-    private func contentTypes(for format: DocumentExporter.ExportFormat) -> [UTType] {
-        switch format {
-        case .pdf:
-            return [.pdf]
-        case .html:
-            return [.html]
-        case .rtf:
-            return [.rtf]
-        case .docx:
-            if let docxType = UTType(filenameExtension: "docx") {
-                return [docxType]
-            }
-            return [.data] // Fallback if docx type not available
-        case .plainText:
-            return [.plainText]
-        }
-    }
-    
-    private func fileExtension(for format: DocumentExporter.ExportFormat) -> String {
-        switch format {
-        case .pdf:
-            return ".pdf"
-        case .html:
-            return ".html"
-        case .rtf:
-            return ".rtf"
-        case .docx:
-            return ".docx"
-        case .plainText:
-            return ".txt"
-        }
-    }
-    
-    private func createExportOptions(for format: DocumentExporter.ExportFormat) -> ExportOptions {
-        var options = ExportOptions()
-        options.format = format
-        
-        if NSApp.appearance?.name == .darkAqua {
-            options.theme = .dark
-        }
-        
-        return options
-    }
-    
-    private func showExportSuccess(url: URL) {
-        let alert = NSAlert()
-        alert.messageText = "Export Successful"
-        alert.informativeText = "Document exported to \(url.lastPathComponent)"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Show in Finder")
-
-        guard let window = window else {
-            _ = alert.runModal() // Fallback to modal if no window
-            return
-        }
-        alert.beginSheetModal(for: window) { response in
-            if response == .alertSecondButtonReturn {
-                NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
-            }
-        }
+        exportCoordinator?.exportDocument(document, format: format)
     }
 
     private func showError(_ message: String) {
@@ -449,50 +358,9 @@ class MainWindowController: NSWindowController {
     }
 }
 
-extension MainWindowController: NSToolbarDelegate {
-    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
-        
-        switch itemIdentifier {
-        case .focusMode:
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.label = "Focus Mode"
-            item.toolTip = "Toggle Focus Mode - Dims surrounding text"
-            item.image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "Focus Mode")
-            item.action = #selector(toggleFocusMode)
-            item.target = self
-            return item
-            
-        case .tableOfContents:
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.label = "Contents"
-            item.toolTip = "Toggle Table of Contents"
-            item.image = NSImage(systemSymbolName: "list.bullet.indent", accessibilityDescription: "Table of Contents")
-            item.action = #selector(toggleTableOfContents)
-            item.target = self
-            return item
-            
-        case .readingStats:
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.label = "Statistics"
-            item.toolTip = "Show Reading Statistics"
-            item.image = NSImage(systemSymbolName: "chart.bar", accessibilityDescription: "Statistics")
-            item.action = #selector(showReadingStatistics)
-            item.target = self
-            return item
-            
-        default:
-            return nil
-        }
-    }
-    
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        return [.focusMode, .tableOfContents, .flexibleSpace, .readingStats]
-    }
-    
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        return [.focusMode, .tableOfContents, .readingStats, .flexibleSpace]
-    }
-}
+// MARK: - Toolbar Action Delegate
+
+extension MainWindowController: ToolbarActionDelegate {}
 
 extension MainWindowController: TableOfContentsDelegate {
     func didSelectHeader(_ header: MarkdownHeader) {
@@ -505,12 +373,6 @@ extension MainWindowController: DropViewDelegate {
         Logger.info("MainWindowController: Received dropped file: \(url.path)")
         loadDocument(at: url)
     }
-}
-
-extension NSToolbarItem.Identifier {
-    static let focusMode = NSToolbarItem.Identifier("FocusMode")
-    static let tableOfContents = NSToolbarItem.Identifier("TableOfContents")
-    static let readingStats = NSToolbarItem.Identifier("ReadingStats")
 }
 
 // MARK: - Status Bar Delegate
@@ -539,20 +401,15 @@ extension MainWindowController: StatusBarDelegate {
 
 extension MainWindowController {
     func showFindBar() {
-        findBarView?.isHidden = false
-        findBarView?.focusAndSelectAll()
+        findBarCoordinator?.showFindBar()
     }
-    
+
     func findNext() {
-        if findBarView?.isHidden == false {
-            findBarView?.findNext()
-        }
+        findBarCoordinator?.findNext()
     }
-    
+
     func findPrevious() {
-        if findBarView?.isHidden == false {
-            findBarView?.findPrevious()
-        }
+        findBarCoordinator?.findPrevious()
     }
 }
 
@@ -579,73 +436,3 @@ extension MainWindowController: NSWindowDelegate {
     }
 }
 
-extension MainWindowController: FindBarDelegate {
-    func findBarDidSearch(_ searchText: String, completion: @escaping (Int) -> Void) {
-        guard let textView = markdownViewController?.textView,
-              let textStorage = textView.textStorage else {
-            completion(0)
-            return
-        }
-        
-        // Clear previous highlights
-        findBarClearHighlights()
-        findMatches.removeAll()
-        
-        // Search for all matches
-        let text = textStorage.string as NSString
-        var searchStart = 0
-        
-        while searchStart < text.length {
-            let range = text.range(of: searchText, 
-                                  options: [.caseInsensitive], 
-                                  range: NSRange(location: searchStart, length: text.length - searchStart))
-            
-            if range.location != NSNotFound {
-                findMatches.append(range)
-                
-                // Highlight the match
-                textStorage.addAttribute(.backgroundColor, 
-                                        value: NSColor.systemYellow.withAlphaComponent(0.3), 
-                                        range: range)
-                
-                searchStart = range.location + range.length
-            } else {
-                break
-            }
-        }
-        
-        completion(findMatches.count)
-    }
-    
-    func findBarHighlightMatch(at index: Int) {
-        guard index < findMatches.count,
-              let textView = markdownViewController?.textView,
-              let textStorage = textView.textStorage else { return }
-        
-        // Remove current highlight
-        for (i, range) in findMatches.enumerated() {
-            let color = i == index ? 
-                NSColor.systemOrange.withAlphaComponent(0.5) : 
-                NSColor.systemYellow.withAlphaComponent(0.3)
-            textStorage.addAttribute(.backgroundColor, value: color, range: range)
-        }
-        
-        // Scroll to match
-        textView.scrollRangeToVisible(findMatches[index])
-    }
-    
-    func findBarClearHighlights() {
-        guard let textStorage = markdownViewController?.textView.textStorage else { return }
-        
-        for range in findMatches {
-            textStorage.removeAttribute(.backgroundColor, range: range)
-        }
-    }
-    
-    func findBarDidClose() {
-        findBarClearHighlights()
-        findMatches.removeAll()
-        findBarView?.isHidden = true
-        markdownViewController?.textView.window?.makeFirstResponder(markdownViewController?.textView)
-    }
-}

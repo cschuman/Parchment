@@ -4,7 +4,7 @@ protocol TableOfContentsDelegate: AnyObject {
     func didSelectHeader(_ header: MarkdownHeader)
 }
 
-class TableOfContentsViewController: NSViewController {
+class TableOfContentsViewController: NSViewController, ThemeApplicable {
     weak var delegate: TableOfContentsDelegate?
     
     private var outlineView: NSOutlineView!

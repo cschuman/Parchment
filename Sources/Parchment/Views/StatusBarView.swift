@@ -1,7 +1,7 @@
 import Cocoa
 import Foundation
 
-class StatusBarView: NSView {
+class StatusBarView: NSView, ThemeApplicable {
     private var statusLabel: NSTextField!
     private var performanceLabel: NSTextField!
     private var memoryLabel: NSTextField!
