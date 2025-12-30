@@ -1,117 +1,113 @@
-# Parchment Roadmap
+# Parchment Roadmap v2.0
+
+> **North Star**: *"The reading experience so good, you forget you're reading markdown."*
 
 ## Vision
-The premier native markdown viewer for macOS - beautiful, fast, and invisible until you need it.
 
-## Core Principles
-1. **Native First** - Leverage macOS APIs for best-in-class performance
-2. **Visual Excellence** - Every pixel should be thoughtfully designed
-3. **Reading Focus** - Optimize for the reading experience above all else
-4. **Simplicity** - Features that enhance, not complicate
+Parchment is **Preview.app for Markdown** - the definitive read-only markdown viewer for developers on macOS. We don't edit, we don't organize, we perfect the viewing experience.
 
-## Release Timeline
+## Positioning
 
-### v1.1 - "Perfect Polish" (Next 2-4 weeks)
-**Theme: Make what we have exceptional**
+| We Are | We Are NOT |
+|--------|------------|
+| A reading experience | An editor (use VS Code, iA Writer) |
+| Native macOS excellence | Cross-platform Electron |
+| One-time purchase ($19.99) | Subscription software |
+| Focused & opinionated | Feature-bloated |
 
-#### High Priority - Quick Wins
-- [x] Enhanced typography with optical sizing ✓
-- [x] Smooth spring-physics scrolling ✓ 
-- [x] Beautiful built-in themes ✓
-- [ ] **Print styles optimization** - Beautiful PDF/print output
-  - Proper page breaks at headings
-  - Remove UI elements from print
-  - Optimized margins and typography for paper
-- [ ] **Quick Look thumbnail generation** - Beautiful previews in Finder
-- [ ] **Smooth zoom animations** - Pinch-to-zoom with spring physics
-- [ ] **Focus mode polish** - Subtle vignette effect, smooth transitions
+## Target Users
 
-#### Implementation Priority
-1. Connect new components to existing UI
-2. Polish animations and transitions
-3. Optimize print/export pipeline
-4. Performance profiling and optimization
+1. **Developers (70%)** - Viewing READMEs, docs, RFCs, technical specs
+2. **Technical Writers (20%)** - Previewing their work alongside editors
+3. **Reviewers (10%)** - Reading PRs, proposals, documentation
 
-### v1.2 - "Reading Intelligence" (4-6 weeks)
-**Theme: Smart features that enhance reading**
+---
 
-#### Reading Progress & Navigation
-- [ ] **Reading progress indicators**
-  - Subtle progress bar
-  - "5 min left in document"
-  - Scroll position memory per document
-- [ ] **Smart bookmarks**
-  - Auto-bookmark on app switch
-  - Visual bookmark indicators in scroll bar
-  - Bookmark history (last 10 positions)
-- [ ] **Enhanced TOC**
-  - Mini-map style preview
-  - Current section highlighting
-  - Breadcrumb navigation bar
+## Phase 1: "Make It Work" (Q1 2025)
+*Fix the broken, add the expected*
 
-#### Visual Enhancements  
-- [ ] **Better image handling**
-  - Lazy loading with blur-up effect
-  - Click to zoom with lightbox
-  - Retina optimization
-  - Image caching improvements
-- [ ] **Code block enhancements**
-  - Line numbers option
-  - Copy button on hover
-  - Language badge
-  - Syntax theme matching
+### Critical Fixes
+- [ ] Fix Focus Mode discovery (Cmd+Shift+F shortcut, add to menu)
+- [ ] Auto dark/light mode switching (follow system appearance)
+- [ ] Restore reading position on file reopen
+- [ ] Transform status bar (parse time → word count, reading time, progress %)
 
-### v1.3 - "Professional Polish" (6-8 weeks)
-**Theme: Features for power users**
+### Table Stakes Features
+- [ ] LaTeX/Math rendering (KaTeX integration)
+- [ ] Mermaid diagram support
+- [ ] Complete GFM support (task lists, footnotes, emoji shortcodes)
 
-#### Export Excellence
-- [ ] **PDF export with perfect fidelity**
-  - Preserve syntax highlighting
-  - Embed fonts
-  - Generate TOC/bookmarks
-  - Custom headers/footers
-- [ ] **Export templates**
-  - Academic paper style
-  - GitHub README style
-  - Book manuscript style
-  - Custom CSS injection
+### UX Quick Wins
+- [ ] Keyboard navigation for headers (Cmd+[ previous, Cmd+] next)
+- [ ] Jump to top/bottom (Cmd+Up, Cmd+Down)
+- [ ] Contextual onboarding tooltips
 
-#### Advanced Features
-- [ ] **Split view** - Compare two documents side by side
-- [ ] **Presentation mode** - Full screen, large type, arrow key navigation
-- [ ] **Reading statistics dashboard** - Time spent, words per minute, heat map
-- [ ] **Custom keyboard shortcuts** - User-definable shortcuts
+---
 
-### v2.0 - "Platform Integration" (3-6 months)
-**Theme: Deep macOS integration**
+## Phase 2: "Make It Delightful" (Q2 2025)
+*The details that create love*
 
-#### System Integration
-- [ ] **Spotlight integration** - Index and search markdown content
-- [ ] **Quick Actions** - Right-click services in Finder
-- [ ] **Handoff support** - Continue reading on iOS (future companion app)
-- [ ] **Stage Manager optimization** - Perfect window management
-- [ ] **System text services** - Dictionary lookup, translation
+### Typography Excellence
+- [ ] Optical font weight adjustment (lighter weights at larger sizes)
+- [ ] Variable font support for heading scales
+- [ ] Baseline grid alignment (8pt)
+- [ ] Maximum line length constraint (680pt centered)
 
-#### Modern Mac Features
-- [ ] **Live Text in images** - OCR for images in markdown
-- [ ] **Shortcuts app integration** - Automation support
-- [ ] **Focus filters** - Different themes for different Focus modes
-- [ ] **SharePlay** - Read together over FaceTime
+### Reading Mode
+- [ ] Distraction-free mode (remove ALL chrome with single keystroke)
+- [ ] Reading progress indicator (subtle vertical bar)
+- [ ] Enhanced Focus Mode with typewriter scrolling
 
-### Future Considerations
+### Visual Polish
+- [ ] Smooth theme transitions (0.3s cross-fade)
+- [ ] Document loading animations
+- [ ] Link hover previews (show URL tooltip)
+- [ ] Scroll physics refinement
 
-#### Potential Features (Not Committed)
-- iOS/iPadOS companion app (requires significant investment)
-- CloudKit sync (only if iOS app exists)
-- Plugin architecture (may complicate simplicity)
-- AI features (summarization, Q&A) - watching market
+### Power User Features
+- [ ] Enhanced Find (regex support, headers-only option)
+- [ ] Export preview before saving
+- [ ] Three new themes (Dracula, Nord, Solarized)
 
-#### Explicitly Not Doing
-- ❌ Wiki-links/Knowledge graphs (not our focus)
-- ❌ Editing capabilities (viewer only)
-- ❌ Note-taking features (stay focused)
-- ❌ Collaboration features (different market)
-- ❌ Cross-platform (Windows/Linux)
+---
+
+## Phase 3: "Make It Essential" (Q3-Q4 2025)
+*Integration and stickiness*
+
+### Workflow Integration
+- [ ] CLI tool (`parchment file.md` from terminal)
+- [ ] VS Code extension ("Open in Parchment")
+- [ ] Alfred/Raycast integration
+- [ ] Homebrew distribution
+
+### Customization
+- [ ] Custom CSS themes
+- [ ] User-defined keyboard shortcuts
+- [ ] Export templates (academic, GitHub, manuscript)
+
+### Platform Excellence
+- [ ] Touch Bar support
+- [ ] Handoff between devices
+- [ ] Stage Manager optimization
+- [ ] Shortcuts app actions
+- [ ] Spotlight content indexing
+
+---
+
+## Anti-Roadmap: What We Will NOT Build
+
+| Feature | Reason |
+|---------|--------|
+| Editing capabilities | Not our lane - use VS Code, iA Writer |
+| Note organization/folders | Not our lane - use Obsidian, Bear |
+| Cloud sync | Files live in Git/Dropbox/iCloud already |
+| Mobile apps | One platform, done perfectly |
+| AI features | Resist hype, focus on rendering excellence |
+| Windows/Linux | Native Mac is our sustainable moat |
+| Subscriptions | Developers hate them |
+| Wiki-links/graphs | Different product category |
+
+---
 
 ## Success Metrics
 
@@ -120,48 +116,54 @@ The premier native markdown viewer for macOS - beautiful, fast, and invisible un
 - Document open: <50ms for 99% of files
 - Scroll performance: Consistent 120fps on ProMotion
 - Memory: <50MB for typical document
-- Battery: Minimal energy impact rating
 
-### Quality Metrics  
-- Crash-free rate: >99.9%
-- App Store rating: >4.8 stars
-- User retention: >80% weekly active
+### Phase 1 Success
+- Focus Mode usage increases 5x
+- Zero complaints about missing dark mode
+- 4.5+ star App Store rating
 
-### Design Excellence
-- Every animation at 60-120fps
-- Consistent spring physics throughout
-- Perfect typography at all zoom levels
-- Pixel-perfect rendering on Retina displays
+### Phase 2 Success
+- "Beautiful" mentioned in 30%+ of reviews
+- Power users adopt keyboard navigation
+- 30-day retention > 60%
+
+### Phase 3 Success
+- CLI becomes primary entry point for 20% of users
+- VS Code extension > 10k installs
+- Word of mouth drives 50% of new users
+
+---
+
+## Competitive Landscape
+
+| Competitor | Position | Price | Our Advantage |
+|------------|----------|-------|---------------|
+| Marked 2 | Preview companion | $13.99 | Modern, maintained, better UX |
+| Typora | WYSIWYG editor | $49.99 | Lighter, faster, viewing-focused |
+| MacDown | Free editor | Free | Dead project (3+ years), we're alive |
+| Obsidian | Knowledge management | Free/$50 | Simpler, focused, no learning curve |
+| iA Writer | Minimalist writing | $13.99 | Reading-first, not writing-first |
+
+**The Gap**: No modern, native, maintained markdown *viewer* exists. We fill that gap.
+
+---
 
 ## Development Philosophy
 
 ### When Adding Features
-Ask yourself:
-1. Does this make reading markdown better?
+1. Does this make *reading* markdown better?
 2. Does this maintain our simplicity?
 3. Is this truly native to macOS?
-4. Would Steve Jobs ship this?
+4. Would we use this ourselves every day?
 
 ### Code Quality Standards
 - Performance over features
 - Native APIs over custom solutions
 - Swift idioms and best practices
-- Comprehensive error handling
 - Accessibility from day one
-
-## Community & Feedback
-
-### Feedback Channels
-- GitHub Issues for bugs/features
-- Twitter/X for quick feedback
-- App Store reviews for user sentiment
-- Direct email for power users
-
-### Open Source Strategy
-- Core viewer remains open source
-- Premium themes as potential revenue
-- Sponsor program for sustainable development
 
 ---
 
 *"The best markdown viewer is the one you forget you're using."*
+
+*Last updated: December 2024*
