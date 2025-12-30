@@ -3,7 +3,7 @@ import Cocoa
 import Markdown
 
 /// Manages performance optimizations for fast file loading
-class PerformanceOptimizer {
+final class PerformanceOptimizer {
     
     static let shared = PerformanceOptimizer()
     
@@ -207,13 +207,14 @@ extension PerformanceOptimizer {
     func optimizeMemory() {
         // Release unused caches
         URLCache.shared.removeAllCachedResponses()
-        
-        // Trigger garbage collection for large allocations
-        if ProcessInfo.processInfo.physicalMemory > 8_000_000_000 { // >8GB RAM
-            // Can be more aggressive with caching
-        } else {
-            // Be conservative with memory
-            // TODO: Implement cache limiting for low memory
+
+        // Adjust cache behavior based on available memory
+        let isLowMemorySystem = ProcessInfo.processInfo.physicalMemory <= 8_000_000_000
+
+        if isLowMemorySystem {
+            // Clear document cache on low-memory systems
+            DocumentCache.shared.clearCache()
+            Logger.info("Low memory system detected - cleared document cache")
         }
     }
     

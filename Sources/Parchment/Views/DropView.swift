@@ -1,6 +1,6 @@
 import Cocoa
 
-class DropView: NSView {
+final class DropView: NSView {
     weak var dropDelegate: DropViewDelegate?
     
     override init(frame frameRect: NSRect) {

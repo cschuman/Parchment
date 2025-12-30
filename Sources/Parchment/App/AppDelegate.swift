@@ -4,7 +4,7 @@ import Foundation
 class AppDelegate: NSObject, NSApplicationDelegate {
     var windowController: MainWindowController?
     var preferencesWindowController: PreferencesWindowController?
-    var recentDocuments: [URL] = []
+    private let recentDocumentsManager = RecentDocumentsManager()
     var documentCache = DocumentCache()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -15,7 +15,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         setupMenuBar()
         setupEnhancedMenus()  // Add enhanced menus for new features
-        loadRecentDocuments()
+
+        // Setup recent documents callback
+        recentDocumentsManager.onDocumentsChanged = { [weak self] in
+            self?.updateOpenRecentMenu()
+        }
+        updateOpenRecentMenu()
         
         // Always show window first
         showWelcomeWindow()
@@ -63,7 +68,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
-        saveRecentDocuments()
+        recentDocumentsManager.persist()
         documentCache.persistMetadata()
     }
     
@@ -459,27 +464,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func addToRecentDocuments(_ url: URL) {
-        recentDocuments.removeAll { $0 == url }
-        recentDocuments.insert(url, at: 0)
-        if recentDocuments.count > 10 {
-            recentDocuments.removeLast()
-        }
-        saveRecentDocuments() // Save immediately when documents are added
-        updateOpenRecentMenu()
+        recentDocumentsManager.addDocument(url)
     }
     
     private func updateOpenRecentMenu(_ menu: NSMenu? = nil) {
         let targetMenu = menu ?? findOpenRecentMenu()
         guard let openRecentMenu = targetMenu else { return }
-        
+
         openRecentMenu.removeAllItems()
-        
-        if recentDocuments.isEmpty {
+
+        let documents = recentDocumentsManager.recentDocuments
+        if documents.isEmpty {
             let emptyItem = NSMenuItem(title: "No Recent Documents", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             openRecentMenu.addItem(emptyItem)
         } else {
-            for (index, url) in recentDocuments.enumerated() {
+            for (index, url) in documents.enumerated() {
                 let menuItem = NSMenuItem(
                     title: url.lastPathComponent,
                     action: #selector(openRecentDocument(_:)),
@@ -489,7 +489,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 menuItem.toolTip = url.path
                 openRecentMenu.addItem(menuItem)
             }
-            
+
             openRecentMenu.addItem(NSMenuItem.separator())
             openRecentMenu.addItem(NSMenuItem(
                 title: "Clear Menu",
@@ -510,25 +510,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func clearRecentDocuments() {
-        recentDocuments.removeAll()
-        saveRecentDocuments()
-        updateOpenRecentMenu()
-    }
-    
-    private func loadRecentDocuments() {
-        if let data = UserDefaults.standard.data(forKey: "RecentDocuments"),
-           let urls = try? JSONDecoder().decode([URL].self, from: data) {
-            recentDocuments = urls
-            updateOpenRecentMenu()
-        }
-        // No else needed - empty recent documents is a valid initial state
-    }
-    
-    private func saveRecentDocuments() {
-        if let data = try? JSONEncoder().encode(recentDocuments) {
-            UserDefaults.standard.set(data, forKey: "RecentDocuments")
-            UserDefaults.standard.synchronize() // Force immediate save
-        }
+        recentDocumentsManager.clearAll()
     }
     
     private func showError(_ message: String) {

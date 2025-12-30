@@ -1,6 +1,6 @@
 import Foundation
 
-class MarkdownDocument {
+final class MarkdownDocument {
     let id: String
     let url: URL?
     let content: String
@@ -19,19 +19,22 @@ class MarkdownDocument {
 }
 
 struct DocumentMetadata {
+    /// Average reading speed in words per minute
+    private static let averageReadingSpeedWPM = 200.0
+
     let wordCount: Int
     let characterCount: Int
     let lineCount: Int
     let headers: [MarkdownHeader]
     let estimatedReadingTime: Int
-    
+
     init(content: String) {
         let words = content.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
         self.wordCount = words.count
         self.characterCount = content.count
         self.lineCount = content.components(separatedBy: .newlines).count
-        self.estimatedReadingTime = Int(ceil(Double(wordCount) / 200.0))
+        self.estimatedReadingTime = Int(ceil(Double(wordCount) / Self.averageReadingSpeedWPM))
         self.headers = []
     }
 }

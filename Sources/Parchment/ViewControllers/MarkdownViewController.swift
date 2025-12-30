@@ -5,12 +5,19 @@ import WebKit
 // Type aliases to avoid ambiguity
 typealias MDText = Markdown.Text
 
-class MarkdownViewController: NSViewController, ThemeApplicable {
+final class MarkdownViewController: NSViewController, ThemeApplicable {
+    private enum Configuration {
+        static let minZoomLevel: CGFloat = 0.5
+        static let maxZoomLevel: CGFloat = 3.0
+        static let defaultZoomLevel: CGFloat = 1.0
+        static let zoomStep: CGFloat = 0.1
+    }
+
     private(set) var scrollView: NSScrollView!
     private(set) var textView: MarkdownTextView!
     private(set) var currentDocument: MarkdownDocument?
     private(set) var typewriterScrollingEnabled = false
-    private var zoomLevel: CGFloat = 1.0
+    private var zoomLevel: CGFloat = Configuration.defaultZoomLevel
     private var statisticsOverlay: StatisticsOverlayView?
 
     // Extracted components
@@ -364,12 +371,12 @@ class MarkdownViewController: NSViewController, ThemeApplicable {
     
     func adjustZoom(delta: CGFloat) {
         zoomLevel += delta
-        zoomLevel = max(0.5, min(3.0, zoomLevel))
+        zoomLevel = max(Configuration.minZoomLevel, min(Configuration.maxZoomLevel, zoomLevel))
         applyZoom()
     }
-    
+
     func resetZoom() {
-        zoomLevel = 1.0
+        zoomLevel = Configuration.defaultZoomLevel
         applyZoom()
     }
     

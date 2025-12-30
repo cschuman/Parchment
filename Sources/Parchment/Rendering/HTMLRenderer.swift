@@ -2,7 +2,7 @@ import Foundation
 import Markdown
 
 /// Renders Markdown AST to HTML string
-class HTMLRenderer {
+final class HTMLRenderer {
     var html = ""
     private var listDepth = 0
     private var orderedListCounters: [Int] = []

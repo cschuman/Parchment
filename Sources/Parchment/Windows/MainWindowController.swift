@@ -1,7 +1,7 @@
 import Cocoa
 import Markdown
 
-class MainWindowController: NSWindowController {
+final class MainWindowController: NSWindowController {
     internal var markdownViewController: MarkdownViewController?
     private var tocViewController: TableOfContentsViewController?
     private var splitView: NSSplitView?

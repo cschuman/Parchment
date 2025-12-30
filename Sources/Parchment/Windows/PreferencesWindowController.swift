@@ -1,6 +1,6 @@
 import Cocoa
 
-class PreferencesWindowController: NSWindowController, NSWindowDelegate {
+final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     
     // UI Elements
     private var fontSizeSlider: NSSlider!

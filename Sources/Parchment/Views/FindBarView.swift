@@ -1,6 +1,6 @@
 import Cocoa
 
-class FindBarView: NSView {
+final class FindBarView: NSView {
     private var searchField: NSSearchField!
     private var resultsLabel: NSTextField!
     private var nextButton: NSButton!

@@ -1,6 +1,6 @@
 import Cocoa
 
-class StatisticsOverlayView: NSView {
+final class StatisticsOverlayView: NSView {
     private var visualEffectView: NSVisualEffectView!
     private var wordCountLabel: NSTextField!
     private var readingTimeLabel: NSTextField!

@@ -1,7 +1,7 @@
 import Cocoa
 import Foundation
 
-class StatusBarView: NSView, ThemeApplicable {
+final class StatusBarView: NSView, ThemeApplicable {
     private var statusLabel: NSTextField!
     private var performanceLabel: NSTextField!
     private var memoryLabel: NSTextField!
@@ -273,7 +273,7 @@ class StatusBarView: NSView, ThemeApplicable {
 
 // MARK: - Frame Rate Monitor
 
-class FrameRateMonitor {
+final class FrameRateMonitor {
     private var displayLink: CVDisplayLink?
     private var frameCount = 0
     private var lastTime = CACurrentMediaTime()
