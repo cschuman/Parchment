@@ -365,8 +365,8 @@ extension ParchmentTheme {
         animationDuration: 0.25
     )
 
-    /// All available themes
-    static let all: [ParchmentTheme] = [
+    /// Built-in themes
+    static let builtIn: [ParchmentTheme] = [
         .minimal,
         .elegant,
         .midnight,
@@ -377,6 +377,11 @@ extension ParchmentTheme {
         .solarizedDark,
         .solarizedLight
     ]
+
+    /// All available themes (built-in + custom)
+    static var all: [ParchmentTheme] {
+        builtIn + CustomThemeLoader.shared.loadCustomThemes()
+    }
     
     /// Get theme by name
     static func theme(named name: String) -> ParchmentTheme? {
