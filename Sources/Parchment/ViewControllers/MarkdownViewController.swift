@@ -26,6 +26,7 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     private var statisticsManager: ReadingStatisticsManager?
     private var navigationCoordinator: NavigationCoordinator?
     private var readingProgressView: ReadingProgressView?
+    private var loadingView: LoadingAnimationView?
 
     // Link hover preview
     private var linkTooltip: LinkPreviewTooltip?
@@ -162,6 +163,19 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
                 progressView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
                 progressView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
                 progressView.widthAnchor.constraint(equalToConstant: 12)
+            ])
+        }
+
+        // Setup loading animation view
+        loadingView = LoadingAnimationView()
+        loadingView?.translatesAutoresizingMaskIntoConstraints = false
+        if let loading = loadingView {
+            view.addSubview(loading)
+            NSLayoutConstraint.activate([
+                loading.topAnchor.constraint(equalTo: view.topAnchor),
+                loading.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                loading.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                loading.bottomAnchor.constraint(equalTo: view.bottomAnchor)
             ])
         }
 
@@ -322,6 +336,12 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     }
     
     private func loadNormalDocument(_ document: MarkdownDocument) {
+        // Show loading animation for larger documents
+        let showLoading = document.content.count > 5000
+        if showLoading {
+            loadingView?.show(message: "Rendering document...")
+        }
+
         // Capture values needed for background work
         let content = document.content
         let currentTheme = ParchmentTheme.current
@@ -365,6 +385,11 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
 
                 // Force update
                 self.textView.needsDisplay = true
+
+                // Hide loading animation
+                if showLoading {
+                    self.loadingView?.hide()
+                }
             }
         }
     }
@@ -565,6 +590,9 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
                 // Apply theme to link tooltip
                 linkTooltip?.applyTheme(theme)
 
+                // Apply theme to loading view
+                loadingView?.applyTheme(theme, animated: true)
+
             } completionHandler: { [weak self] in
                 // Rerender document after animation completes
                 self?.rerenderWithTheme(theme, scrollPercentage: scrollPercentage)
@@ -580,6 +608,7 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
             ]
             readingProgressView?.applyTheme(theme)
             linkTooltip?.applyTheme(theme)
+            loadingView?.applyTheme(theme, animated: false)
             rerenderWithTheme(theme, scrollPercentage: scrollPercentage)
         }
 
