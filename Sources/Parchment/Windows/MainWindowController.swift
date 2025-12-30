@@ -15,6 +15,12 @@ final class MainWindowController: NSWindowController {
     private let toolbarCoordinator = ToolbarCoordinator()
     private var exportCoordinator: ExportCoordinator?
 
+    // Touch Bar support
+    @available(macOS 10.12.2, *)
+    private lazy var touchBarController: TouchBarController = {
+        TouchBarController(windowController: self)
+    }()
+
     // Reading Mode state
     private var isReadingMode = false
     private var savedToolbarVisible = true
@@ -127,7 +133,14 @@ final class MainWindowController: NSWindowController {
         
         tocViewController?.view.isHidden = true
     }
-    
+
+    // MARK: - Touch Bar Support
+
+    @available(macOS 10.12.2, *)
+    override func makeTouchBar() -> NSTouchBar? {
+        return touchBarController.makeTouchBar()
+    }
+
     func loadDocument(at url: URL) {
         Logger.info("Loading document: \(url.path)")
         
@@ -165,9 +178,12 @@ final class MainWindowController: NSWindowController {
                 self?.tocViewController?.updateTableOfContents(for: document)
                 
                 self?.setupFileWatcher(for: url)
-                
+
                 DocumentCache.shared.cacheDocument(document)
-                
+
+                // Index document for Spotlight search
+                SpotlightIndexer.shared.indexDocument(at: url, content: optimizedDoc.content)
+
             case .failure(let error):
                 self?.showError("Failed to load document: \(error.localizedDescription)")
             }

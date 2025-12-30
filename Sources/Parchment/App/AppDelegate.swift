@@ -50,6 +50,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ParchmentTheme.current = theme
             windowController?.applyTheme(theme)
         }
+
+        // Register for Spotlight search result notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSpotlightSearchResult(_:)),
+            name: NSNotification.Name("OpenDocumentFromSpotlight"),
+            object: nil
+        )
+
+        // Index recent documents for Spotlight on launch
+        SpotlightIndexer.shared.indexRecentDocuments()
+    }
+
+    @objc private func handleSpotlightSearchResult(_ notification: Notification) {
+        guard let url = notification.userInfo?["url"] as? URL else { return }
+        openDocument(at: url)
+    }
+
+    // Handle Spotlight search result clicks
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([NSUserActivityRestoring]) -> Void) -> Bool {
+        return SpotlightSearchHandler.shared.handleSearchResult(userActivity: userActivity)
     }
 
     private func setupAppearanceObserver() {
