@@ -426,6 +426,9 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     }
     
     @objc private func scrollViewDidScroll(_ notification: Notification) {
+        // Update status bar progress in real-time
+        updateStatusBarProgress()
+
         // Don't save position while restoring
         guard !isRestoringPosition else { return }
 
@@ -434,6 +437,21 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         savePositionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             self?.saveCurrentScrollPosition()
         }
+    }
+
+    private func updateStatusBarProgress() {
+        let documentHeight = textView.frame.height
+        let visibleRect = scrollView.contentView.visibleRect
+        let scrollableHeight = documentHeight - visibleRect.height
+
+        guard scrollableHeight > 0 else {
+            statusBarDelegate?.updateScrollProgress(0)
+            return
+        }
+
+        let percentage = visibleRect.origin.y / scrollableHeight
+        let clampedPercentage = min(max(percentage, 0), 1)
+        statusBarDelegate?.updateScrollProgress(clampedPercentage)
     }
 
     private func saveCurrentScrollPosition() {

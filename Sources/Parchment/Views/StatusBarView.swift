@@ -2,96 +2,64 @@ import Cocoa
 import Foundation
 
 final class StatusBarView: NSView, ThemeApplicable {
-    private var statusLabel: NSTextField!
-    private var performanceLabel: NSTextField!
-    private var memoryLabel: NSTextField!
-    private var systemLabel: NSTextField!
-    
-    func applyTheme(_ theme: ParchmentTheme) {
-        // Apply theme to status bar
-        layer?.backgroundColor = theme.backgroundColor.withAlphaComponent(0.95).cgColor
-        statusLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
-        performanceLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
-        memoryLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
-        systemLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
-    }
-    
-    private var updateTimer: Timer?
-    private var frameRateMonitor: FrameRateMonitor?
-    
-    // Performance metrics
-    private var lastParseTime: TimeInterval = 0
-    private var lastRenderTime: TimeInterval = 0
-    private var lastDrawTime: TimeInterval = 0
-    private var currentFPS: Int = 0
-    private var cacheHitRate: Double = 0
-    
-    // File metrics
-    private var currentFilePath: String = ""
-    private var fileSize: Int64 = 0
-    private var lineCount: Int = 0
+    private var fileLabel: NSTextField!
+    private var wordCountLabel: NSTextField!
+    private var readingTimeLabel: NSTextField!
+    private var progressLabel: NSTextField!
+
+    // Reading metrics
+    private var currentFileName: String = ""
     private var wordCount: Int = 0
-    
+    private var scrollProgress: Double = 0
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setupViews()
-        startMonitoring()
     }
-    
+
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupViews()
-        startMonitoring()
     }
-    
+
     private func setupViews() {
         wantsLayer = true
         layer?.backgroundColor = NSColor(white: 0.95, alpha: 1.0).cgColor
-        
-        // Create status sections
+
         let stackView = NSStackView()
         stackView.orientation = .horizontal
         stackView.distribution = .fill
-        stackView.spacing = 20
-        stackView.edgeInsets = NSEdgeInsets(top: 2, left: 10, bottom: 2, right: 10)
+        stackView.spacing = 16
+        stackView.edgeInsets = NSEdgeInsets(top: 2, left: 12, bottom: 2, right: 12)
         stackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // File info section
-        statusLabel = createLabel(accessibilityLabel: "Document information")
-        statusLabel.stringValue = "No document"
-        stackView.addArrangedSubview(statusLabel)
 
-        // Add separator
-        stackView.addArrangedSubview(createSeparator())
+        // File name
+        fileLabel = createLabel(accessibilityLabel: "Document name")
+        fileLabel.stringValue = "No document"
+        stackView.addArrangedSubview(fileLabel)
 
-        // Performance section
-        performanceLabel = createLabel(accessibilityLabel: "Performance metrics")
-        performanceLabel.stringValue = "Parse: -- | Render: -- | FPS: --"
-        stackView.addArrangedSubview(performanceLabel)
-
-        // Add separator
-        stackView.addArrangedSubview(createSeparator())
-
-        // Memory section
-        memoryLabel = createLabel(accessibilityLabel: "Memory usage")
-        memoryLabel.stringValue = "Memory: -- | Cache: --"
-        stackView.addArrangedSubview(memoryLabel)
-
-        // Add separator
-        stackView.addArrangedSubview(createSeparator())
-
-        // System section
-        systemLabel = createLabel(accessibilityLabel: "CPU usage")
-        systemLabel.stringValue = "CPU: --"
-        stackView.addArrangedSubview(systemLabel)
-        
-        // Add spacer to push content to the left
+        // Spacer to push metrics to right
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         stackView.addArrangedSubview(spacer)
-        
+
+        // Word count
+        wordCountLabel = createLabel(accessibilityLabel: "Word count")
+        wordCountLabel.stringValue = ""
+        stackView.addArrangedSubview(wordCountLabel)
+
+        // Reading time
+        readingTimeLabel = createLabel(accessibilityLabel: "Estimated reading time")
+        readingTimeLabel.stringValue = ""
+        stackView.addArrangedSubview(readingTimeLabel)
+
+        // Progress
+        progressLabel = createLabel(accessibilityLabel: "Reading progress")
+        progressLabel.stringValue = ""
+        stackView.addArrangedSubview(progressLabel)
+
         addSubview(stackView)
-        
+
         NSLayoutConstraint.activate([
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -99,29 +67,17 @@ final class StatusBarView: NSView, ThemeApplicable {
             stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
             heightAnchor.constraint(equalToConstant: 22)
         ])
-        
-        // Dark mode support
-        if #available(macOS 10.14, *) {
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(appearanceChanged),
-                name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
-                object: nil
-            )
-            updateAppearance()
-        }
     }
-    
+
     private func createLabel(accessibilityLabel: String? = nil) -> NSTextField {
         let label = NSTextField()
         label.isEditable = false
         label.isBordered = false
         label.backgroundColor = .clear
-        label.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        label.font = NSFont.systemFont(ofSize: 11, weight: .regular)
         label.textColor = NSColor.secondaryLabelColor
         label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
-        // Accessibility
         label.setAccessibilityElement(true)
         label.setAccessibilityRole(.staticText)
         if let accessibilityLabel = accessibilityLabel {
@@ -130,224 +86,84 @@ final class StatusBarView: NSView, ThemeApplicable {
 
         return label
     }
-    
-    private func createSeparator() -> NSView {
-        let separator = NSView()
-        separator.wantsLayer = true
-        separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        separator.widthAnchor.constraint(equalToConstant: 1).isActive = true
-        return separator
-    }
-    
-    @objc private func appearanceChanged() {
-        updateAppearance()
-    }
-    
-    private func updateAppearance() {
-        if #available(macOS 10.14, *) {
-            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            layer?.backgroundColor = isDark ? NSColor(white: 0.15, alpha: 1.0).cgColor : NSColor(white: 0.95, alpha: 1.0).cgColor
-        }
-    }
-    
-    private func startMonitoring() {
-        // Update status bar every 1 second (100ms was excessive for status metrics)
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateMetrics()
-        }
 
-        // Initialize frame rate monitor
-        frameRateMonitor = FrameRateMonitor { [weak self] fps in
-            self?.currentFPS = fps
-        }
+    // MARK: - Theme Support
+
+    func applyTheme(_ theme: ParchmentTheme) {
+        layer?.backgroundColor = theme.backgroundColor.withAlphaComponent(0.95).cgColor
+        let textColor = theme.textColor.withAlphaComponent(0.6)
+        fileLabel?.textColor = textColor
+        wordCountLabel?.textColor = textColor
+        readingTimeLabel?.textColor = textColor
+        progressLabel?.textColor = textColor
     }
-    
-    private func updateMetrics() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Update file info
-            if !self.currentFilePath.isEmpty {
-                let fileName = URL(fileURLWithPath: self.currentFilePath).lastPathComponent
-                let sizeStr = self.formatFileSize(self.fileSize)
-                self.statusLabel.stringValue = "📄 \(fileName) | \(sizeStr) | \(self.lineCount) lines | \(self.wordCount) words"
-            }
-            
-            // Update performance metrics
-            let parseStr = self.lastParseTime > 0 ? String(format: "%.1fms", self.lastParseTime * 1000) : "--"
-            let renderStr = self.lastRenderTime > 0 ? String(format: "%.1fms", self.lastRenderTime * 1000) : "--"
-            let fpsStr = self.currentFPS > 0 ? "\(self.currentFPS)" : "--"
-            self.performanceLabel.stringValue = "Parse: \(parseStr) | Render: \(renderStr) | FPS: \(fpsStr)"
-            
-            // Update memory metrics
-            let memoryUsage = self.getCurrentMemoryUsage()
-            let memoryStr = String(format: "%.1fMB", memoryUsage)
-            let cacheStr = self.cacheHitRate > 0 ? String(format: "%.0f%%", self.cacheHitRate * 100) : "--"
-            self.memoryLabel.stringValue = "Memory: \(memoryStr) | Cache: \(cacheStr)"
-            
-            // Update CPU usage
-            let cpuUsage = self.getCurrentCPUUsage()
-            let cpuStr = String(format: "%.1f%%", cpuUsage)
-            self.systemLabel.stringValue = "CPU: \(cpuStr)"
-        }
-    }
-    
+
     // MARK: - Public Methods
-    
+
     func updateFileInfo(path: String, size: Int64, lines: Int, words: Int) {
-        currentFilePath = path
-        fileSize = size
-        lineCount = lines
+        currentFileName = URL(fileURLWithPath: path).lastPathComponent
         wordCount = words
-    }
-    
-    func updateParseTime(_ time: TimeInterval) {
-        lastParseTime = time
-    }
-    
-    func updateRenderTime(_ time: TimeInterval) {
-        lastRenderTime = time
-    }
-    
-    func updateDrawTime(_ time: TimeInterval) {
-        lastDrawTime = time
-    }
-    
-    func updateCacheHitRate(_ rate: Double) {
-        cacheHitRate = rate
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func formatFileSize(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
-    }
-    
-    private func getCurrentMemoryUsage() -> Double {
-        var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
-        
-        let result = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_,
-                         task_flavor_t(MACH_TASK_BASIC_INFO),
-                         $0,
-                         &count)
-            }
-        }
-        
-        if result == KERN_SUCCESS {
-            return Double(info.resident_size) / 1024.0 / 1024.0
-        }
-        return 0
-    }
-    
-    private func getCurrentCPUUsage() -> Double {
-        var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
-        
-        let result = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_,
-                         task_flavor_t(MACH_TASK_BASIC_INFO),
-                         $0,
-                         &count)
-            }
-        }
-        
-        if result == KERN_SUCCESS {
-            // This is a simplified CPU calculation
-            // For more accurate results, we'd need to track thread times
-            return 0.0 // Placeholder - implement proper CPU tracking
-        }
-        return 0
-    }
-    
-    deinit {
-        updateTimer?.invalidate()
-        NotificationCenter.default.removeObserver(self)
-    }
-}
-
-// MARK: - Frame Rate Monitor
-
-final class FrameRateMonitor {
-    private var displayLink: CVDisplayLink?
-    private var frameCount = 0
-    private var lastTime = CACurrentMediaTime()
-    private let callback: (Int) -> Void
-    private var isRunning = false
-    private let lock = NSLock()
-
-    init(callback: @escaping (Int) -> Void) {
-        self.callback = callback
-        setupDisplayLink()
+        updateDisplay()
     }
 
-    private func setupDisplayLink() {
-        CVDisplayLinkCreateWithActiveCGDisplays(&displayLink)
-
-        guard let displayLink = displayLink else { return }
-
-        // Use passRetained to prevent use-after-free - we release in deinit
-        let selfRef = Unmanaged.passRetained(self)
-
-        CVDisplayLinkSetOutputCallback(displayLink, { (_, _, _, _, _, userInfo) -> CVReturn in
-            guard let userInfo = userInfo else { return kCVReturnSuccess }
-            let monitor = Unmanaged<FrameRateMonitor>.fromOpaque(userInfo).takeUnretainedValue()
-            monitor.tick()
-            return kCVReturnSuccess
-        }, selfRef.toOpaque())
-
-        lock.lock()
-        isRunning = true
-        lock.unlock()
-
-        CVDisplayLinkStart(displayLink)
+    func updateScrollProgress(_ progress: Double) {
+        scrollProgress = min(max(progress, 0), 1)
+        updateProgressDisplay()
     }
 
-    private func tick() {
-        lock.lock()
-        guard isRunning else {
-            lock.unlock()
-            return
-        }
-        frameCount += 1
-        let currentTime = CACurrentMediaTime()
-        let elapsed = currentTime - lastTime
+    // MARK: - Private Methods
 
-        if elapsed >= 1.0 {
-            let fps = Int(Double(frameCount) / elapsed)
-            frameCount = 0
-            lastTime = currentTime
-            lock.unlock()
+    private func updateDisplay() {
+        fileLabel.stringValue = currentFileName.isEmpty ? "No document" : currentFileName
 
-            DispatchQueue.main.async { [weak self] in
-                self?.callback(fps)
+        if wordCount > 0 {
+            wordCountLabel.stringValue = "\(formatNumber(wordCount)) words"
+
+            // Calculate reading time at 200 WPM
+            let minutes = Double(wordCount) / 200.0
+            if minutes < 1 {
+                readingTimeLabel.stringValue = "<1 min read"
+            } else {
+                readingTimeLabel.stringValue = "~\(Int(ceil(minutes))) min read"
             }
         } else {
-            lock.unlock()
+            wordCountLabel.stringValue = ""
+            readingTimeLabel.stringValue = ""
+        }
+
+        updateProgressDisplay()
+    }
+
+    private func updateProgressDisplay() {
+        if wordCount > 0 {
+            let percent = Int(scrollProgress * 100)
+            progressLabel.stringValue = "\(percent)%"
+        } else {
+            progressLabel.stringValue = ""
         }
     }
 
-    func stop() {
-        lock.lock()
-        isRunning = false
-        lock.unlock()
-
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-        }
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
 
-    deinit {
-        stop()
+    // MARK: - Deprecated methods (kept for compatibility during transition)
 
-        // Release the retained reference
-        if displayLink != nil {
-            Unmanaged.passUnretained(self).release()
-        }
+    func updateParseTime(_ time: TimeInterval) {
+        // No longer displayed
+    }
+
+    func updateRenderTime(_ time: TimeInterval) {
+        // No longer displayed
+    }
+
+    func updateDrawTime(_ time: TimeInterval) {
+        // No longer displayed
+    }
+
+    func updateCacheHitRate(_ rate: Double) {
+        // No longer displayed
     }
 }

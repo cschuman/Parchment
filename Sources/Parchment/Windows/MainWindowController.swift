@@ -374,19 +374,24 @@ protocol StatusBarDelegate: AnyObject {
     func updateParseTime(_ time: TimeInterval)
     func updateRenderTime(_ time: TimeInterval)
     func updateCacheHitRate(_ rate: Double)
+    func updateScrollProgress(_ progress: Double)
 }
 
 extension MainWindowController: StatusBarDelegate {
     func updateParseTime(_ time: TimeInterval) {
         statusBarView?.updateParseTime(time)
     }
-    
+
     func updateRenderTime(_ time: TimeInterval) {
         statusBarView?.updateRenderTime(time)
     }
-    
+
     func updateCacheHitRate(_ rate: Double) {
         statusBarView?.updateCacheHitRate(rate)
+    }
+
+    func updateScrollProgress(_ progress: Double) {
+        statusBarView?.updateScrollProgress(progress)
     }
 }
 
