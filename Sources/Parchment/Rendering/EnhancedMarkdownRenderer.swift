@@ -1,6 +1,47 @@
 import Cocoa
 import Markdown
 
+/// Common GitHub emoji shortcodes
+private let emojiShortcodes: [String: String] = [
+    // Smileys
+    ":smile:": "😄", ":grinning:": "😀", ":joy:": "😂", ":rofl:": "🤣",
+    ":smiley:": "😃", ":grin:": "😁", ":wink:": "😉", ":blush:": "😊",
+    ":relaxed:": "☺️", ":yum:": "😋", ":heart_eyes:": "😍", ":kissing_heart:": "😘",
+    ":thinking:": "🤔", ":neutral_face:": "😐", ":expressionless:": "😑",
+    ":unamused:": "😒", ":rolling_eyes:": "🙄", ":grimacing:": "😬",
+    ":relieved:": "😌", ":pensive:": "😔", ":sleepy:": "😪", ":sleeping:": "😴",
+    ":mask:": "😷", ":sunglasses:": "😎", ":confused:": "😕", ":worried:": "😟",
+    ":open_mouth:": "😮", ":hushed:": "😯", ":astonished:": "😲", ":flushed:": "😳",
+    ":frowning:": "😦", ":anguished:": "😧", ":fearful:": "😨", ":cry:": "😢",
+    ":sob:": "😭", ":scream:": "😱", ":angry:": "😠", ":rage:": "😡",
+    // Gestures
+    ":+1:": "👍", ":thumbsup:": "👍", ":-1:": "👎", ":thumbsdown:": "👎",
+    ":clap:": "👏", ":wave:": "👋", ":raised_hands:": "🙌", ":pray:": "🙏",
+    ":muscle:": "💪", ":point_up:": "☝️", ":point_down:": "👇",
+    ":point_left:": "👈", ":point_right:": "👉", ":ok_hand:": "👌", ":v:": "✌️",
+    // Hearts & symbols
+    ":heart:": "❤️", ":orange_heart:": "🧡", ":yellow_heart:": "💛",
+    ":green_heart:": "💚", ":blue_heart:": "💙", ":purple_heart:": "💜",
+    ":broken_heart:": "💔", ":sparkling_heart:": "💖", ":star:": "⭐",
+    ":star2:": "🌟", ":sparkles:": "✨", ":zap:": "⚡", ":fire:": "🔥",
+    ":100:": "💯", ":checkmark:": "✓", ":white_check_mark:": "✅",
+    ":x:": "❌", ":warning:": "⚠️", ":exclamation:": "❗", ":question:": "❓",
+    // Objects
+    ":bulb:": "💡", ":memo:": "📝", ":book:": "📖", ":books:": "📚",
+    ":pencil:": "✏️", ":pencil2:": "✏️", ":wrench:": "🔧", ":hammer:": "🔨",
+    ":gear:": "⚙️", ":link:": "🔗", ":key:": "🔑", ":lock:": "🔒",
+    ":unlock:": "🔓", ":bell:": "🔔", ":bookmark:": "🔖", ":clipboard:": "📋",
+    ":file_folder:": "📁", ":computer:": "💻", ":iphone:": "📱",
+    // Nature
+    ":sun:": "☀️", ":sunny:": "☀️", ":cloud:": "☁️", ":rainbow:": "🌈",
+    ":snowflake:": "❄️", ":umbrella:": "☔", ":coffee:": "☕", ":tea:": "🍵",
+    // Arrows & misc
+    ":arrow_up:": "⬆️", ":arrow_down:": "⬇️", ":arrow_left:": "⬅️",
+    ":arrow_right:": "➡️", ":rocket:": "🚀", ":tada:": "🎉", ":trophy:": "🏆",
+    ":medal:": "🏅", ":1st_place_medal:": "🥇", ":2nd_place_medal:": "🥈",
+    ":3rd_place_medal:": "🥉", ":bug:": "🐛", ":ant:": "🐜",
+]
+
 /// Enhanced markdown renderer using the TypographyEngine for beautiful text rendering
 final class EnhancedMarkdownRenderer {
     private let typographyEngine: TypographyEngine
@@ -105,7 +146,10 @@ final class EnhancedMarkdownRenderer {
     }
 
     private func visitText(_ text: Markdown.Text, context: RenderContext) {
-        let smartText = typographyEngine.applySmartTypography(to: text.string)
+        var smartText = typographyEngine.applySmartTypography(to: text.string)
+
+        // Replace emoji shortcodes
+        smartText = replaceEmojiShortcodes(in: smartText)
 
         // Check for math expressions
         let mathExpressions = MathRenderer.shared.findMathExpressions(in: smartText)
@@ -118,6 +162,14 @@ final class EnhancedMarkdownRenderer {
             let processed = MathRenderer.shared.processText(smartText, baseAttributes: context.currentAttributes, theme: theme)
             context.attributedString.append(processed)
         }
+    }
+
+    private func replaceEmojiShortcodes(in text: String) -> String {
+        var result = text
+        for (shortcode, emoji) in emojiShortcodes {
+            result = result.replacingOccurrences(of: shortcode, with: emoji)
+        }
+        return result
     }
 
     private func visitStrong(_ strong: Strong, context: RenderContext) {
@@ -227,7 +279,13 @@ final class EnhancedMarkdownRenderer {
     private func visitListItem(_ item: ListItem, context: RenderContext) {
         let indent = String(repeating: "  ", count: max(0, context.listDepth - 1))
 
-        if !context.listCounters.isEmpty {
+        // Check for task list checkbox
+        if let checkbox = item.checkbox {
+            let checkboxSymbol = checkbox == .checked ? "☑" : "☐"
+            var checkboxAttrs = context.currentAttributes
+            checkboxAttrs[.foregroundColor] = checkbox == .checked ? NSColor.systemGreen : NSColor.secondaryLabelColor
+            context.attributedString.append(NSAttributedString(string: "\(indent)\(checkboxSymbol) ", attributes: checkboxAttrs))
+        } else if !context.listCounters.isEmpty {
             // Ordered list
             let number = context.listCounters[context.listCounters.count - 1]
             context.attributedString.append(NSAttributedString(string: "\(indent)\(number). ", attributes: context.currentAttributes))
