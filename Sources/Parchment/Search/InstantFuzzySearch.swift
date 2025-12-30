@@ -35,12 +35,21 @@ final class InstantFuzzySearch: NSViewController {
     
     private let searchQueue = OperationQueue()
     private var currentSearchOperation: Operation?
-    
+    private var eventMonitor: Any?  // Store monitor for cleanup
+
     weak var delegate: InstantFuzzySearchDelegate?
     weak var textView: NSTextView?
-    
+
     private let highlightColor = NSColor.systemYellow.withAlphaComponent(0.3)
     private let currentHighlightColor = NSColor.systemOrange.withAlphaComponent(0.5)
+
+    deinit {
+        // Clean up event monitor to prevent memory leak
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        currentSearchOperation?.cancel()
+    }
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 400))
@@ -118,7 +127,7 @@ final class InstantFuzzySearch: NSViewController {
     }
     
     private func setupKeyboardShortcuts() {
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
             
             switch event.keyCode {

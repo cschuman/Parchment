@@ -92,10 +92,16 @@ final class DocumentExporter {
             throw ExportError.invalidOutputPath
         }
 
-        // Path must not contain shell metacharacters
+        // Path must not contain shell metacharacters or control characters
         let path = url.path
-        let dangerousChars = CharacterSet(charactersIn: ";|&$`\"'\\<>(){}[]!#~")
+        let dangerousChars = CharacterSet(charactersIn: ";|&$`\"'\\<>(){}[]!#~\0\n\r")
         if path.unicodeScalars.contains(where: { dangerousChars.contains($0) }) {
+            throw ExportError.invalidOutputPath
+        }
+
+        // Block paths with Unicode normalization tricks
+        let normalized = path.precomposedStringWithCanonicalMapping
+        if normalized != path {
             throw ExportError.invalidOutputPath
         }
 

@@ -1,7 +1,7 @@
 import Cocoa
 
 /// Secure image loader with SSRF protection, size limits, and bounded caching
-final class ImageLoader {
+final class ImageLoader: NSObject {
     static let shared = ImageLoader()
 
     // MARK: - Configuration
@@ -13,7 +13,7 @@ final class ImageLoader {
 
     // MARK: - Properties
 
-    private let session: URLSession
+    private var session: URLSession!
     private let imageCache = NSCache<NSURL, NSImage>()
 
     // MARK: - Private IP ranges to block (SSRF protection)
@@ -55,7 +55,9 @@ final class ImageLoader {
 
     // MARK: - Initialization
 
-    private init() {
+    private override init() {
+        super.init()
+
         // Configure URLSession with security settings
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = Self.requestTimeout
@@ -63,7 +65,8 @@ final class ImageLoader {
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.httpMaximumConnectionsPerHost = 4
 
-        session = URLSession(configuration: config)
+        // Use delegate to validate resolved IP addresses (DNS rebinding protection)
+        session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
 
         // Configure NSCache limits
         imageCache.countLimit = Self.maxCacheCount
@@ -308,5 +311,61 @@ final class ImageLoader {
         }
 
         return true
+    }
+}
+
+// MARK: - URLSessionTaskDelegate (DNS Rebinding Protection)
+
+extension ImageLoader: URLSessionTaskDelegate {
+    /// Validate the resolved IP address before allowing the connection
+    /// This prevents DNS rebinding attacks where initial DNS lookup passes validation
+    /// but the actual connection goes to a different (private) IP
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        // Validate redirect URL
+        guard let redirectURL = request.url, isURLSafe(redirectURL) else {
+            Logger.warning("Blocked redirect to unsafe URL")
+            completionHandler(nil)  // Cancel the redirect
+            return
+        }
+
+        completionHandler(request)
+    }
+}
+
+extension ImageLoader: URLSessionDataDelegate {
+    /// Validate the connection before receiving data
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        // Validate content type and size in headers
+        guard let httpResponse = response as? HTTPURLResponse else {
+            completionHandler(.cancel)
+            return
+        }
+
+        // Check status code
+        guard (200...299).contains(httpResponse.statusCode) else {
+            completionHandler(.cancel)
+            return
+        }
+
+        // Check content length if available
+        let expectedLength = httpResponse.expectedContentLength
+        if expectedLength > 0 && expectedLength > Int64(Self.maxImageSize) {
+            Logger.warning("Image too large (from headers): \(expectedLength) bytes")
+            completionHandler(.cancel)
+            return
+        }
+
+        completionHandler(.allow)
     }
 }

@@ -3,7 +3,10 @@ import Cocoa
 
 /// Manages diff highlighting when documents are refreshed
 final class DiffHighlighter {
-    
+
+    /// Maximum lines to process for diff (prevents O(n²) on large files)
+    private static let maxLinesForDiff = 500
+
     struct DiffResult {
         let added: [NSRange]
         let deleted: [NSRange]
@@ -14,6 +17,12 @@ final class DiffHighlighter {
     static func computeDiff(old: String, new: String) -> DiffResult {
         let oldLines = old.components(separatedBy: .newlines)
         let newLines = new.components(separatedBy: .newlines)
+
+        // Skip diff computation for very large files (O(n²) prevention)
+        if oldLines.count > maxLinesForDiff || newLines.count > maxLinesForDiff {
+            Logger.warning("Skipping diff highlighting for large file (\(max(oldLines.count, newLines.count)) lines)")
+            return DiffResult(added: [], deleted: [], modified: [])
+        }
         
         var added: [NSRange] = []
         var deleted: [NSRange] = []

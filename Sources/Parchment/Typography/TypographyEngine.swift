@@ -2,10 +2,16 @@ import Cocoa
 
 /// Enhanced typography engine for beautiful markdown rendering
 final class TypographyEngine {
-    
+
     private let theme: ParchmentTheme
     private let zoomLevel: CGFloat
-    
+
+    // MARK: - Cached Regex Patterns (compiled once, reused for performance)
+
+    private static let doubleQuoteRegex = try? NSRegularExpression(pattern: "\"([^\"]*?)\"", options: [])
+    private static let singleQuoteRegex = try? NSRegularExpression(pattern: "'([^']*?)'", options: [])
+    private static let apostropheRegex = try? NSRegularExpression(pattern: "([a-zA-Z])'([a-zA-Z])", options: [])
+
     init(theme: ParchmentTheme = ParchmentTheme.current, zoomLevel: CGFloat = 1.0) {
         self.theme = theme
         self.zoomLevel = zoomLevel
@@ -134,30 +140,30 @@ final class TypographyEngine {
         return attrs
     }
     
-    /// Apply smart typography replacements
+    /// Apply smart typography replacements using cached regex patterns
     func applySmartTypography(to text: String) -> String {
         var result = text
-        
-        // Smart quotes - handle opening and closing separately
-        result = result.replacingOccurrences(of: "\"([^\"]*?)\"", 
-                                            with: "\u{201C}$1\u{201D}", 
-                                            options: .regularExpression)
-        result = result.replacingOccurrences(of: "'([^']*?)'", 
-                                            with: "\u{2018}$1\u{2019}", 
-                                            options: .regularExpression)
-        
+
+        // Smart quotes - use cached regex for performance
+        if let regex = Self.doubleQuoteRegex {
+            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(result.startIndex..., in: result), withTemplate: "\u{201C}$1\u{201D}")
+        }
+        if let regex = Self.singleQuoteRegex {
+            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(result.startIndex..., in: result), withTemplate: "\u{2018}$1\u{2019}")
+        }
+
         // Handle apostrophes
-        result = result.replacingOccurrences(of: "([a-zA-Z])'([a-zA-Z])", 
-                                            with: "$1\u{2019}$2", 
-                                            options: .regularExpression)
-        
-        // Em dashes
+        if let regex = Self.apostropheRegex {
+            result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(result.startIndex..., in: result), withTemplate: "$1\u{2019}$2")
+        }
+
+        // Em dashes (simple string replacements - no regex needed)
         result = result.replacingOccurrences(of: "--", with: "\u{2014}")
         result = result.replacingOccurrences(of: " - ", with: " \u{2014} ")
-        
+
         // Ellipsis
         result = result.replacingOccurrences(of: "...", with: "\u{2026}")
-        
+
         return result
     }
     

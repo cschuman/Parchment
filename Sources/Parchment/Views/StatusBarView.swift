@@ -151,11 +151,11 @@ class StatusBarView: NSView {
     }
     
     private func startMonitoring() {
-        // Update status bar every 100ms
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        // Update status bar every 1 second (100ms was excessive for status metrics)
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.updateMetrics()
         }
-        
+
         // Initialize frame rate monitor
         frameRateMonitor = FrameRateMonitor { [weak self] fps in
             self?.currentFPS = fps
@@ -290,7 +290,8 @@ class FrameRateMonitor {
         guard let displayLink = displayLink else { return }
         
         CVDisplayLinkSetOutputCallback(displayLink, { (_, _, _, _, _, userInfo) -> CVReturn in
-            let monitor = Unmanaged<FrameRateMonitor>.fromOpaque(userInfo!).takeUnretainedValue()
+            guard let userInfo = userInfo else { return kCVReturnSuccess }
+            let monitor = Unmanaged<FrameRateMonitor>.fromOpaque(userInfo).takeUnretainedValue()
             monitor.tick()
             return kCVReturnSuccess
         }, Unmanaged.passUnretained(self).toOpaque())

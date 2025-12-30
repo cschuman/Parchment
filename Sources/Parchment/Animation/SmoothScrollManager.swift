@@ -115,7 +115,8 @@ final class SmoothScrollManager: NSObject {
         guard let displayLink = displayLink else { return }
         
         CVDisplayLinkSetOutputCallback(displayLink, { (_, _, _, _, _, userInfo) -> CVReturn in
-            let manager = Unmanaged<SmoothScrollManager>.fromOpaque(userInfo!).takeUnretainedValue()
+            guard let userInfo = userInfo else { return kCVReturnSuccess }
+            let manager = Unmanaged<SmoothScrollManager>.fromOpaque(userInfo).takeUnretainedValue()
             manager.displayLinkFired()
             return kCVReturnSuccess
         }, Unmanaged.passUnretained(self).toOpaque())

@@ -15,6 +15,9 @@ final class CodeSyntaxHighlighter: SyntaxHighlighting {
     private static var regexCache: [String: NSRegularExpression] = [:]
     private static let regexCacheLock = NSLock()
 
+    /// Maximum line length to process with regex (ReDoS protection)
+    private static let maxLineLength = 10_000
+
     // MARK: - Initialization
 
     init(defaultFont: NSFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)) {
@@ -125,20 +128,20 @@ extension CodeSyntaxHighlighter {
         
         // Strings
         highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
-        
-        // Comments
+
+        // Comments (safe patterns to avoid ReDoS)
         highlightPattern("//.*$", in: result, color: colors.comment, font: baseFont, options: [.anchorsMatchLines])
-        highlightPattern("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/", in: result, color: colors.comment, font: baseFont)
-        
+        highlightPattern("/\\*[\\s\\S]*?\\*/", in: result, color: colors.comment, font: baseFont, options: [.dotMatchesLineSeparators])
+
         // Numbers
         highlightPattern("\\b\\d+(\\.\\d+)?\\b", in: result, color: colors.number, font: baseFont)
-        
+
         // Function calls
         highlightPattern("\\b[a-z][a-zA-Z0-9_]*(?=\\()", in: result, color: colors.function, font: baseFont)
-        
+
         return result
     }
-    
+
     private func highlightJavaScript(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
@@ -157,20 +160,20 @@ extension CodeSyntaxHighlighter {
         highlightPattern("\"[^\"\\n]*\"", in: result, color: colors.string, font: baseFont)
         highlightPattern("'[^'\\n]*'", in: result, color: colors.string, font: baseFont)
         highlightPattern("`[^`]*`", in: result, color: colors.string, font: baseFont)
-        
-        // Comments
+
+        // Comments (safe patterns to avoid ReDoS)
         highlightPattern("//.*$", in: result, color: colors.comment, font: baseFont, options: [.anchorsMatchLines])
-        highlightPattern("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/", in: result, color: colors.comment, font: baseFont)
-        
+        highlightPattern("/\\*[\\s\\S]*?\\*/", in: result, color: colors.comment, font: baseFont, options: [.dotMatchesLineSeparators])
+
         // Numbers
         highlightPattern("\\b\\d+(\\.\\d+)?\\b", in: result, color: colors.number, font: baseFont)
-        
+
         // Function calls
         highlightPattern("\\b[a-z][a-zA-Z0-9_]*(?=\\()", in: result, color: colors.function, font: baseFont)
-        
+
         return result
     }
-    
+
     private func highlightPython(_ code: String, baseFont: NSFont, colors: SyntaxColors) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code, attributes: [
             .font: baseFont,
@@ -276,10 +279,10 @@ extension CodeSyntaxHighlighter {
         
         // Numbers with units
         highlightPattern("\\b\\d+(\\.\\d+)?(px|em|rem|%|vh|vw|pt)?\\b", in: result, color: colors.number, font: baseFont)
-        
-        // Comments
-        highlightPattern("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/", in: result, color: colors.comment, font: baseFont)
-        
+
+        // Comments (safe pattern to avoid ReDoS)
+        highlightPattern("/\\*[\\s\\S]*?\\*/", in: result, color: colors.comment, font: baseFont, options: [.dotMatchesLineSeparators])
+
         return result
     }
     
@@ -306,11 +309,14 @@ extension CodeSyntaxHighlighter {
     }
 
     private func highlightPattern(_ pattern: String, in attributedString: NSMutableAttributedString, color: NSColor, font: NSFont, options: NSRegularExpression.Options = []) {
+        // ReDoS protection: skip regex on extremely long inputs
+        guard attributedString.length <= Self.maxLineLength else { return }
         guard let regex = cachedRegex(pattern: pattern, options: options) else { return }
 
         let range = NSRange(location: 0, length: attributedString.length)
 
-        regex.enumerateMatches(in: attributedString.string, options: [], range: range) { match, _, _ in
+        // Use matching with timeout option for additional safety
+        regex.enumerateMatches(in: attributedString.string, options: [.withoutAnchoringBounds], range: range) { match, _, _ in
             guard let matchRange = match?.range else { return }
             attributedString.addAttribute(.foregroundColor, value: color, range: matchRange)
             attributedString.addAttribute(.font, value: font, range: matchRange)

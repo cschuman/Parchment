@@ -18,11 +18,11 @@ final class ParchmentTests: XCTestCase {
     
     func testPerformanceOfLargeDocument() {
         let largeMarkdown = String(repeating: "# Heading\n\nParagraph text.\n\n", count: 1000)
-        
+
         measure {
             let document = Document(parsing: largeMarkdown)
-            let visitor = MarkdownAttributedStringVisitor()
-            _ = visitor.convertDocument(document)
+            let renderer = EnhancedMarkdownRenderer()
+            _ = renderer.render(document)
         }
     }
     

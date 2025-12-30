@@ -8,6 +8,7 @@ final class FileWatcher {
     private var source: DispatchSourceFileSystemObject?
     private var debounceWorkItem: DispatchWorkItem?
     private let callbackQueue: DispatchQueue
+    private let lock = NSLock()  // Thread-safety for start/stop operations
 
     /// Creates a file watcher with debouncing
     /// - Parameters:
@@ -22,6 +23,9 @@ final class FileWatcher {
     }
 
     func start() {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard fileDescriptor == -1 else { return }
 
         fileDescriptor = open(url.path, O_EVTONLY)
@@ -42,6 +46,8 @@ final class FileWatcher {
         }
 
         source?.setCancelHandler { [weak self] in
+            self?.lock.lock()
+            defer { self?.lock.unlock() }
             if let fd = self?.fileDescriptor, fd >= 0 {
                 close(fd)
                 self?.fileDescriptor = -1
@@ -66,6 +72,9 @@ final class FileWatcher {
     }
 
     func stop() {
+        lock.lock()
+        defer { lock.unlock() }
+
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
         source?.cancel()

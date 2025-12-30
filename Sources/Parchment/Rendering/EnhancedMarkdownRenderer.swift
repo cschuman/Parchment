@@ -5,221 +5,230 @@ import Markdown
 final class EnhancedMarkdownRenderer {
     private let typographyEngine: TypographyEngine
     private let syntaxHighlighter: CodeSyntaxHighlighter
-    private let attributedString = NSMutableAttributedString()
-    private var currentAttributes: [NSAttributedString.Key: Any] = [:]
-    private var listDepth = 0
-    private var listCounters: [Int] = []
     private let theme: ParchmentTheme
     private let zoomLevel: CGFloat
-    
+
+    /// Render context holds all mutable state for a single render operation
+    /// This ensures thread-safety by isolating state per render call
+    private final class RenderContext {
+        let attributedString = NSMutableAttributedString()
+        var currentAttributes: [NSAttributedString.Key: Any]
+        var listDepth = 0
+        var listCounters: [Int] = []
+
+        init(baseAttributes: [NSAttributedString.Key: Any]) {
+            self.currentAttributes = baseAttributes
+        }
+    }
+
     init(theme: ParchmentTheme = ParchmentTheme.current, zoomLevel: CGFloat = 1.0) {
         self.theme = theme
         self.zoomLevel = zoomLevel
         self.typographyEngine = TypographyEngine(theme: theme, zoomLevel: zoomLevel)
         self.syntaxHighlighter = CodeSyntaxHighlighter()
-        self.currentAttributes = typographyEngine.bodyAttributes()
     }
     
     public func render(_ document: Document) -> NSAttributedString {
-        attributedString.setAttributedString(NSAttributedString())
-        
+        // Create isolated context for this render operation (thread-safe)
+        let context = RenderContext(baseAttributes: typographyEngine.bodyAttributes())
+
         for child in document.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
+
         // Apply final polish
-        applyFinalFormatting()
-        
-        return NSAttributedString(attributedString: attributedString)
+        applyFinalFormatting(context: context)
+
+        return NSAttributedString(attributedString: context.attributedString)
     }
-    
-    private func visit(_ node: any Markup) {
+
+    private func visit(_ node: any Markup, context: RenderContext) {
         switch node {
         case let heading as Heading:
-            visitHeading(heading)
+            visitHeading(heading, context: context)
         case let paragraph as Paragraph:
-            visitParagraph(paragraph)
+            visitParagraph(paragraph, context: context)
         case let text as Markdown.Text:
-            visitText(text)
+            visitText(text, context: context)
         case let strong as Strong:
-            visitStrong(strong)
+            visitStrong(strong, context: context)
         case let emphasis as Emphasis:
-            visitEmphasis(emphasis)
+            visitEmphasis(emphasis, context: context)
         case let code as InlineCode:
-            visitInlineCode(code)
+            visitInlineCode(code, context: context)
         case let codeBlock as CodeBlock:
-            visitCodeBlock(codeBlock)
+            visitCodeBlock(codeBlock, context: context)
         case let list as UnorderedList:
-            visitUnorderedList(list)
+            visitUnorderedList(list, context: context)
         case let list as OrderedList:
-            visitOrderedList(list)
+            visitOrderedList(list, context: context)
         case let item as ListItem:
-            visitListItem(item)
+            visitListItem(item, context: context)
         case let link as Link:
-            visitLink(link)
+            visitLink(link, context: context)
         case let blockquote as BlockQuote:
-            visitBlockQuote(blockquote)
+            visitBlockQuote(blockquote, context: context)
         case let table as Table:
-            visitTable(table)
+            visitTable(table, context: context)
         case is LineBreak:
-            attributedString.append(NSAttributedString(string: "\n", attributes: currentAttributes))
+            context.attributedString.append(NSAttributedString(string: "\n", attributes: context.currentAttributes))
         default:
             // Visit children for unknown nodes
             for child in node.children {
-                visit(child)
+                visit(child, context: context)
             }
         }
     }
     
-    private func visitHeading(_ heading: Heading) {
-        let savedAttributes = currentAttributes
-        currentAttributes = typographyEngine.headingAttributes(level: heading.level)
-        
+    private func visitHeading(_ heading: Heading, context: RenderContext) {
+        let savedAttributes = context.currentAttributes
+        context.currentAttributes = typographyEngine.headingAttributes(level: heading.level)
+
         for child in heading.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        attributedString.append(NSAttributedString(string: "\n", attributes: currentAttributes))
-        currentAttributes = savedAttributes
+
+        context.attributedString.append(NSAttributedString(string: "\n", attributes: context.currentAttributes))
+        context.currentAttributes = savedAttributes
     }
-    
-    private func visitParagraph(_ paragraph: Paragraph) {
-        let savedAttributes = currentAttributes
-        currentAttributes = typographyEngine.bodyAttributes()
-        
+
+    private func visitParagraph(_ paragraph: Paragraph, context: RenderContext) {
+        let savedAttributes = context.currentAttributes
+        context.currentAttributes = typographyEngine.bodyAttributes()
+
         for child in paragraph.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        attributedString.append(NSAttributedString(string: "\n", attributes: currentAttributes))
-        currentAttributes = savedAttributes
+
+        context.attributedString.append(NSAttributedString(string: "\n", attributes: context.currentAttributes))
+        context.currentAttributes = savedAttributes
     }
-    
-    private func visitText(_ text: Markdown.Text) {
+
+    private func visitText(_ text: Markdown.Text, context: RenderContext) {
         let smartText = typographyEngine.applySmartTypography(to: text.string)
-        attributedString.append(NSAttributedString(string: smartText, attributes: currentAttributes))
+        context.attributedString.append(NSAttributedString(string: smartText, attributes: context.currentAttributes))
     }
-    
-    private func visitStrong(_ strong: Strong) {
-        let savedFont = currentAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: 16)
+
+    private func visitStrong(_ strong: Strong, context: RenderContext) {
+        let savedFont = context.currentAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: 16)
         let boldFont = NSFontManager.shared.convert(savedFont, toHaveTrait: .boldFontMask)
-        currentAttributes[.font] = boldFont
-        
+        context.currentAttributes[.font] = boldFont
+
         for child in strong.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        currentAttributes[.font] = savedFont
+
+        context.currentAttributes[.font] = savedFont
     }
-    
-    private func visitEmphasis(_ emphasis: Emphasis) {
-        let savedFont = currentAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: 16)
+
+    private func visitEmphasis(_ emphasis: Emphasis, context: RenderContext) {
+        let savedFont = context.currentAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: 16)
         let italicFont = NSFontManager.shared.convert(savedFont, toHaveTrait: .italicFontMask)
-        currentAttributes[.font] = italicFont
-        
+        context.currentAttributes[.font] = italicFont
+
         for child in emphasis.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        currentAttributes[.font] = savedFont
+
+        context.currentAttributes[.font] = savedFont
     }
-    
-    private func visitInlineCode(_ code: InlineCode) {
-        let savedAttributes = currentAttributes
-        currentAttributes = typographyEngine.inlineCodeAttributes()
-        
-        attributedString.append(NSAttributedString(string: " \(code.code) ", attributes: currentAttributes))
-        currentAttributes = savedAttributes
+
+    private func visitInlineCode(_ code: InlineCode, context: RenderContext) {
+        let savedAttributes = context.currentAttributes
+        context.currentAttributes = typographyEngine.inlineCodeAttributes()
+
+        context.attributedString.append(NSAttributedString(string: " \(code.code) ", attributes: context.currentAttributes))
+        context.currentAttributes = savedAttributes
     }
-    
-    private func visitCodeBlock(_ codeBlock: CodeBlock) {
-        let savedAttributes = currentAttributes
-        currentAttributes = typographyEngine.codeBlockAttributes()
-        
+
+    private func visitCodeBlock(_ codeBlock: CodeBlock, context: RenderContext) {
+        let savedAttributes = context.currentAttributes
+        context.currentAttributes = typographyEngine.codeBlockAttributes()
+
         // Add spacing before code block
-        attributedString.append(NSAttributedString(string: "\n", attributes: savedAttributes))
-        
+        context.attributedString.append(NSAttributedString(string: "\n", attributes: savedAttributes))
+
         // Create a mutable string for the code block with background
         let codeString = NSMutableAttributedString()
-        
+
         // Attempt syntax highlighting if language is specified
         if let language = codeBlock.language {
             let highlighted = syntaxHighlighter.highlight(
                 code: codeBlock.code,
                 language: language,
-                fontSize: (currentAttributes[.font] as? NSFont)?.pointSize ?? 14,
+                fontSize: (context.currentAttributes[.font] as? NSFont)?.pointSize ?? 14,
                 theme: theme
             )
             codeString.append(highlighted)
         } else {
-            codeString.append(NSAttributedString(string: codeBlock.code, attributes: currentAttributes))
+            codeString.append(NSAttributedString(string: codeBlock.code, attributes: context.currentAttributes))
         }
-        
+
         // Apply background color to entire code block
         let fullRange = NSRange(location: 0, length: codeString.length)
         codeString.addAttribute(.backgroundColor, value: theme.codeBackgroundColor, range: fullRange)
-        
+
         // Add padding around code with background
         let paddedCode = NSMutableAttributedString()
-        let paddingAttrs = currentAttributes
+        let paddingAttrs = context.currentAttributes
         paddedCode.append(NSAttributedString(string: "  ", attributes: paddingAttrs))
         paddedCode.append(codeString)
         paddedCode.append(NSAttributedString(string: "  ", attributes: paddingAttrs))
-        
-        attributedString.append(paddedCode)
-        attributedString.append(NSAttributedString(string: "\n", attributes: savedAttributes))
-        
-        currentAttributes = savedAttributes
+
+        context.attributedString.append(paddedCode)
+        context.attributedString.append(NSAttributedString(string: "\n", attributes: savedAttributes))
+
+        context.currentAttributes = savedAttributes
     }
-    
-    private func visitUnorderedList(_ list: UnorderedList) {
-        listDepth += 1
+
+    private func visitUnorderedList(_ list: UnorderedList, context: RenderContext) {
+        context.listDepth += 1
         for child in list.children {
-            visit(child)
+            visit(child, context: context)
         }
-        listDepth -= 1
+        context.listDepth -= 1
     }
-    
-    private func visitOrderedList(_ list: OrderedList) {
-        listDepth += 1
-        listCounters.append(1)
-        
+
+    private func visitOrderedList(_ list: OrderedList, context: RenderContext) {
+        context.listDepth += 1
+        context.listCounters.append(1)
+
         for child in list.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        listCounters.removeLast()
-        listDepth -= 1
+
+        context.listCounters.removeLast()
+        context.listDepth -= 1
     }
-    
-    private func visitListItem(_ item: ListItem) {
-        let indent = String(repeating: "  ", count: max(0, listDepth - 1))
-        
-        if !listCounters.isEmpty {
+
+    private func visitListItem(_ item: ListItem, context: RenderContext) {
+        let indent = String(repeating: "  ", count: max(0, context.listDepth - 1))
+
+        if !context.listCounters.isEmpty {
             // Ordered list
-            let number = listCounters[listCounters.count - 1]
-            attributedString.append(NSAttributedString(string: "\(indent)\(number). ", attributes: currentAttributes))
-            listCounters[listCounters.count - 1] += 1
+            let number = context.listCounters[context.listCounters.count - 1]
+            context.attributedString.append(NSAttributedString(string: "\(indent)\(number). ", attributes: context.currentAttributes))
+            context.listCounters[context.listCounters.count - 1] += 1
         } else {
             // Unordered list with varying bullets
             let bullets = ["•", "◦", "▪", "▫"]
-            let bullet = bullets[min(listDepth - 1, bullets.count - 1)]
-            attributedString.append(NSAttributedString(string: "\(indent)\(bullet) ", attributes: currentAttributes))
+            let bullet = bullets[min(context.listDepth - 1, bullets.count - 1)]
+            context.attributedString.append(NSAttributedString(string: "\(indent)\(bullet) ", attributes: context.currentAttributes))
         }
-        
+
         for child in item.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        if !attributedString.string.hasSuffix("\n") {
-            attributedString.append(NSAttributedString(string: "\n", attributes: currentAttributes))
+
+        if !context.attributedString.string.hasSuffix("\n") {
+            context.attributedString.append(NSAttributedString(string: "\n", attributes: context.currentAttributes))
         }
     }
-    
-    private func visitLink(_ link: Link) {
-        let savedColor = currentAttributes[.foregroundColor]
-        currentAttributes[.foregroundColor] = theme.linkColor
-        currentAttributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+
+    private func visitLink(_ link: Link, context: RenderContext) {
+        let savedColor = context.currentAttributes[.foregroundColor]
+        context.currentAttributes[.foregroundColor] = theme.linkColor
+        context.currentAttributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
 
         if let destination = link.destination {
             // Block dangerous URL schemes (XSS prevention)
@@ -227,37 +236,37 @@ final class EnhancedMarkdownRenderer {
             if !lowercaseDestination.hasPrefix("javascript:") &&
                !lowercaseDestination.hasPrefix("data:") &&
                !lowercaseDestination.hasPrefix("vbscript:") {
-                currentAttributes[.link] = URL(string: destination)
+                context.currentAttributes[.link] = URL(string: destination)
             }
         }
 
         for child in link.children {
-            visit(child)
+            visit(child, context: context)
         }
 
-        currentAttributes[.foregroundColor] = savedColor
-        currentAttributes.removeValue(forKey: .underlineStyle)
-        currentAttributes.removeValue(forKey: .link)
+        context.currentAttributes[.foregroundColor] = savedColor
+        context.currentAttributes.removeValue(forKey: .underlineStyle)
+        context.currentAttributes.removeValue(forKey: .link)
     }
-    
-    private func visitBlockQuote(_ blockquote: BlockQuote) {
-        let savedAttributes = currentAttributes
-        currentAttributes = typographyEngine.blockquoteAttributes()
-        
-        attributedString.append(NSAttributedString(string: "> ", attributes: currentAttributes))
-        
+
+    private func visitBlockQuote(_ blockquote: BlockQuote, context: RenderContext) {
+        let savedAttributes = context.currentAttributes
+        context.currentAttributes = typographyEngine.blockquoteAttributes()
+
+        context.attributedString.append(NSAttributedString(string: "> ", attributes: context.currentAttributes))
+
         for child in blockquote.children {
-            visit(child)
+            visit(child, context: context)
         }
-        
-        currentAttributes = savedAttributes
+
+        context.currentAttributes = savedAttributes
     }
     
-    private func visitTable(_ table: Table) {
+    private func visitTable(_ table: Table, context: RenderContext) {
         // Extract table data
         var headers: [String] = []
         var rows: [[String]] = []
-        
+
         // Process table structure
         for child in table.children {
             if let head = child as? Table.Head {
@@ -274,7 +283,7 @@ final class EnhancedMarkdownRenderer {
                 }
             }
         }
-        
+
         // Calculate column widths
         var columnWidths: [Int] = []
         for i in 0..<headers.count {
@@ -286,17 +295,17 @@ final class EnhancedMarkdownRenderer {
             }
             columnWidths.append(min(maxWidth + 2, 30)) // Cap at 30 chars
         }
-        
+
         // Create table attributes (monospace for alignment)
-        var tableAttrs = currentAttributes
+        var tableAttrs = context.currentAttributes
         tableAttrs[.font] = NSFont.monospacedSystemFont(
             ofSize: (theme.baseFontSize - 1) * zoomLevel,
             weight: .regular
         )
         tableAttrs[.foregroundColor] = theme.textColor
-        
-        attributedString.append(NSAttributedString(string: "\n", attributes: currentAttributes))
-        
+
+        context.attributedString.append(NSAttributedString(string: "\n", attributes: context.currentAttributes))
+
         // Render headers
         var headerLine = ""
         for (i, header) in headers.enumerated() {
@@ -306,8 +315,8 @@ final class EnhancedMarkdownRenderer {
                 headerLine += "│"
             }
         }
-        attributedString.append(NSAttributedString(string: headerLine + "\n", attributes: tableAttrs))
-        
+        context.attributedString.append(NSAttributedString(string: headerLine + "\n", attributes: tableAttrs))
+
         // Render separator
         var separator = ""
         for (i, width) in columnWidths.enumerated() {
@@ -316,8 +325,8 @@ final class EnhancedMarkdownRenderer {
                 separator += "┼"
             }
         }
-        attributedString.append(NSAttributedString(string: separator + "\n", attributes: tableAttrs))
-        
+        context.attributedString.append(NSAttributedString(string: separator + "\n", attributes: tableAttrs))
+
         // Render rows
         for row in rows {
             var rowLine = ""
@@ -328,10 +337,10 @@ final class EnhancedMarkdownRenderer {
                     rowLine += "│"
                 }
             }
-            attributedString.append(NSAttributedString(string: rowLine + "\n", attributes: tableAttrs))
+            context.attributedString.append(NSAttributedString(string: rowLine + "\n", attributes: tableAttrs))
         }
-        
-        attributedString.append(NSAttributedString(string: "\n", attributes: currentAttributes))
+
+        context.attributedString.append(NSAttributedString(string: "\n", attributes: context.currentAttributes))
     }
     
     private func extractRowData(_ row: Table.Row) -> [String] {
@@ -368,14 +377,14 @@ final class EnhancedMarkdownRenderer {
         return " " + trimmed + String(repeating: " ", count: max(0, padding - 1))
     }
     
-    private func applyFinalFormatting() {
+    private func applyFinalFormatting(context: RenderContext) {
         // Remove any trailing whitespace
-        while attributedString.string.hasSuffix("\n\n\n") {
-            attributedString.deleteCharacters(in: NSRange(location: attributedString.length - 1, length: 1))
+        while context.attributedString.string.hasSuffix("\n\n\n") {
+            context.attributedString.deleteCharacters(in: NSRange(location: context.attributedString.length - 1, length: 1))
         }
-        
+
         // Ensure proper spacing throughout
-        let fullRange = NSRange(location: 0, length: attributedString.length)
-        attributedString.fixAttributes(in: fullRange)
+        let fullRange = NSRange(location: 0, length: context.attributedString.length)
+        context.attributedString.fixAttributes(in: fullRange)
     }
 }
