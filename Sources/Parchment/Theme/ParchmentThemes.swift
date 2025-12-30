@@ -43,6 +43,54 @@ public struct SyntaxColors {
         variable: NSColor(calibratedRed: 0.65, green: 0.50, blue: 0.35, alpha: 1.0),
         operatorColor: NSColor(calibratedRed: 0.55, green: 0.45, blue: 0.40, alpha: 1.0)
     )
+
+    // Dracula theme colors - purple/pink/cyan accents
+    static let dracula = SyntaxColors(
+        keyword: NSColor(calibratedRed: 1.0, green: 0.47, blue: 0.78, alpha: 1.0),      // Pink
+        string: NSColor(calibratedRed: 0.95, green: 0.98, blue: 0.48, alpha: 1.0),      // Yellow
+        comment: NSColor(calibratedRed: 0.38, green: 0.45, blue: 0.53, alpha: 1.0),     // Gray
+        number: NSColor(calibratedRed: 0.74, green: 0.58, blue: 0.98, alpha: 1.0),      // Purple
+        type: NSColor(calibratedRed: 0.55, green: 0.95, blue: 0.90, alpha: 1.0),        // Cyan
+        function: NSColor(calibratedRed: 0.31, green: 0.98, blue: 0.48, alpha: 1.0),    // Green
+        variable: NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.95, alpha: 1.0),    // Foreground
+        operatorColor: NSColor(calibratedRed: 1.0, green: 0.47, blue: 0.78, alpha: 1.0) // Pink
+    )
+
+    // Nord theme colors - arctic, bluish palette
+    static let nord = SyntaxColors(
+        keyword: NSColor(calibratedRed: 0.51, green: 0.63, blue: 0.76, alpha: 1.0),     // Frost blue
+        string: NSColor(calibratedRed: 0.64, green: 0.75, blue: 0.55, alpha: 1.0),      // Aurora green
+        comment: NSColor(calibratedRed: 0.38, green: 0.43, blue: 0.50, alpha: 1.0),     // Polar night 4
+        number: NSColor(calibratedRed: 0.71, green: 0.56, blue: 0.68, alpha: 1.0),      // Aurora purple
+        type: NSColor(calibratedRed: 0.56, green: 0.74, blue: 0.73, alpha: 1.0),        // Frost cyan
+        function: NSColor(calibratedRed: 0.53, green: 0.75, blue: 0.82, alpha: 1.0),    // Frost light blue
+        variable: NSColor(calibratedRed: 0.85, green: 0.87, blue: 0.91, alpha: 1.0),    // Snow storm 1
+        operatorColor: NSColor(calibratedRed: 0.51, green: 0.63, blue: 0.76, alpha: 1.0) // Frost blue
+    )
+
+    // Solarized Dark colors
+    static let solarizedDark = SyntaxColors(
+        keyword: NSColor(calibratedRed: 0.52, green: 0.60, blue: 0.00, alpha: 1.0),     // Green
+        string: NSColor(calibratedRed: 0.16, green: 0.63, blue: 0.60, alpha: 1.0),      // Cyan
+        comment: NSColor(calibratedRed: 0.35, green: 0.43, blue: 0.46, alpha: 1.0),     // Base01
+        number: NSColor(calibratedRed: 0.83, green: 0.37, blue: 0.00, alpha: 1.0),      // Orange
+        type: NSColor(calibratedRed: 0.71, green: 0.54, blue: 0.00, alpha: 1.0),        // Yellow
+        function: NSColor(calibratedRed: 0.15, green: 0.55, blue: 0.82, alpha: 1.0),    // Blue
+        variable: NSColor(calibratedRed: 0.58, green: 0.63, blue: 0.63, alpha: 1.0),    // Base1
+        operatorColor: NSColor(calibratedRed: 0.86, green: 0.20, blue: 0.18, alpha: 1.0) // Red
+    )
+
+    // Solarized Light colors
+    static let solarizedLight = SyntaxColors(
+        keyword: NSColor(calibratedRed: 0.52, green: 0.60, blue: 0.00, alpha: 1.0),     // Green
+        string: NSColor(calibratedRed: 0.16, green: 0.63, blue: 0.60, alpha: 1.0),      // Cyan
+        comment: NSColor(calibratedRed: 0.58, green: 0.63, blue: 0.63, alpha: 1.0),     // Base1
+        number: NSColor(calibratedRed: 0.83, green: 0.37, blue: 0.00, alpha: 1.0),      // Orange
+        type: NSColor(calibratedRed: 0.71, green: 0.54, blue: 0.00, alpha: 1.0),        // Yellow
+        function: NSColor(calibratedRed: 0.15, green: 0.55, blue: 0.82, alpha: 1.0),    // Blue
+        variable: NSColor(calibratedRed: 0.40, green: 0.48, blue: 0.51, alpha: 1.0),    // Base00
+        operatorColor: NSColor(calibratedRed: 0.86, green: 0.20, blue: 0.18, alpha: 1.0) // Red
+    )
 }
 
 /// Beautiful, hand-crafted themes for Parchment
@@ -216,14 +264,118 @@ extension ParchmentTheme {
         useShadows: false,
         animationDuration: 0.15
     )
-    
+
+    /// Dracula - popular dark theme with purple/pink accents
+    static let dracula = ParchmentTheme(
+        name: "Dracula",
+        backgroundColor: NSColor(calibratedRed: 0.16, green: 0.16, blue: 0.21, alpha: 1.0),        // #282a36
+        textColor: NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.95, alpha: 1.0),              // #f8f8f2
+        headingColor: NSColor(calibratedRed: 0.74, green: 0.58, blue: 0.98, alpha: 1.0),           // #bd93f9 Purple
+        linkColor: NSColor(calibratedRed: 0.55, green: 0.95, blue: 0.90, alpha: 1.0),              // #8be9fd Cyan
+        codeBackgroundColor: NSColor(calibratedRed: 0.13, green: 0.14, blue: 0.18, alpha: 1.0),    // Darker bg
+        codeTextColor: NSColor(calibratedRed: 0.31, green: 0.98, blue: 0.48, alpha: 1.0),          // #50fa7b Green
+        blockquoteColor: NSColor(calibratedRed: 0.38, green: 0.45, blue: 0.53, alpha: 1.0),        // Comment gray
+        selectionColor: NSColor(calibratedRed: 0.27, green: 0.28, blue: 0.35, alpha: 0.7),         // Selection
+        cursorColor: NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.95, alpha: 1.0),            // Foreground
+        lineNumberColor: NSColor(calibratedRed: 0.38, green: 0.45, blue: 0.53, alpha: 1.0),        // Comment
+        syntaxColors: .dracula,
+        bodyFontName: "-apple-system",
+        headingFontName: "-apple-system",
+        codeFontName: "SF Mono",
+        baseFontSize: 16,
+        lineHeightMultiple: 1.4,
+        cornerRadius: 0,
+        contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
+        useShadows: false,
+        animationDuration: 0.25
+    )
+
+    /// Nord - arctic, bluish dark theme
+    static let nord = ParchmentTheme(
+        name: "Nord",
+        backgroundColor: NSColor(calibratedRed: 0.18, green: 0.20, blue: 0.25, alpha: 1.0),        // #2e3440 Polar Night
+        textColor: NSColor(calibratedRed: 0.85, green: 0.87, blue: 0.91, alpha: 1.0),              // #d8dee9 Snow Storm
+        headingColor: NSColor(calibratedRed: 0.92, green: 0.93, blue: 0.95, alpha: 1.0),           // #eceff4 Snow Storm 3
+        linkColor: NSColor(calibratedRed: 0.53, green: 0.75, blue: 0.82, alpha: 1.0),              // #88c0d0 Frost
+        codeBackgroundColor: NSColor(calibratedRed: 0.23, green: 0.26, blue: 0.32, alpha: 1.0),    // #3b4252 Polar Night 2
+        codeTextColor: NSColor(calibratedRed: 0.76, green: 0.80, blue: 0.85, alpha: 1.0),          // #c2c9d4
+        blockquoteColor: NSColor(calibratedRed: 0.62, green: 0.67, blue: 0.74, alpha: 1.0),        // Muted text
+        selectionColor: NSColor(calibratedRed: 0.29, green: 0.34, blue: 0.42, alpha: 0.6),         // Selection
+        cursorColor: NSColor(calibratedRed: 0.53, green: 0.75, blue: 0.82, alpha: 1.0),            // Frost
+        lineNumberColor: NSColor(calibratedRed: 0.38, green: 0.43, blue: 0.50, alpha: 1.0),        // Polar Night 4
+        syntaxColors: .nord,
+        bodyFontName: "-apple-system",
+        headingFontName: "-apple-system",
+        codeFontName: "SF Mono",
+        baseFontSize: 16,
+        lineHeightMultiple: 1.4,
+        cornerRadius: 0,
+        contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
+        useShadows: false,
+        animationDuration: 0.25
+    )
+
+    /// Solarized Dark - classic dark theme with muted colors
+    static let solarizedDark = ParchmentTheme(
+        name: "Solarized Dark",
+        backgroundColor: NSColor(calibratedRed: 0.00, green: 0.17, blue: 0.21, alpha: 1.0),        // #002b36 Base03
+        textColor: NSColor(calibratedRed: 0.51, green: 0.58, blue: 0.59, alpha: 1.0),              // #839496 Base0
+        headingColor: NSColor(calibratedRed: 0.58, green: 0.63, blue: 0.63, alpha: 1.0),           // #93a1a1 Base1
+        linkColor: NSColor(calibratedRed: 0.15, green: 0.55, blue: 0.82, alpha: 1.0),              // #268bd2 Blue
+        codeBackgroundColor: NSColor(calibratedRed: 0.03, green: 0.21, blue: 0.26, alpha: 1.0),    // #073642 Base02
+        codeTextColor: NSColor(calibratedRed: 0.51, green: 0.58, blue: 0.59, alpha: 1.0),          // Base0
+        blockquoteColor: NSColor(calibratedRed: 0.35, green: 0.43, blue: 0.46, alpha: 1.0),        // Base01
+        selectionColor: NSColor(calibratedRed: 0.03, green: 0.21, blue: 0.26, alpha: 0.6),         // Selection
+        cursorColor: NSColor(calibratedRed: 0.83, green: 0.37, blue: 0.00, alpha: 1.0),            // Orange
+        lineNumberColor: NSColor(calibratedRed: 0.35, green: 0.43, blue: 0.46, alpha: 1.0),        // Base01
+        syntaxColors: .solarizedDark,
+        bodyFontName: "-apple-system",
+        headingFontName: "-apple-system",
+        codeFontName: "SF Mono",
+        baseFontSize: 16,
+        lineHeightMultiple: 1.4,
+        cornerRadius: 0,
+        contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
+        useShadows: false,
+        animationDuration: 0.25
+    )
+
+    /// Solarized Light - classic light theme with muted colors
+    static let solarizedLight = ParchmentTheme(
+        name: "Solarized Light",
+        backgroundColor: NSColor(calibratedRed: 0.99, green: 0.96, blue: 0.89, alpha: 1.0),        // #fdf6e3 Base3
+        textColor: NSColor(calibratedRed: 0.40, green: 0.48, blue: 0.51, alpha: 1.0),              // #657b83 Base00
+        headingColor: NSColor(calibratedRed: 0.35, green: 0.43, blue: 0.46, alpha: 1.0),           // #586e75 Base01
+        linkColor: NSColor(calibratedRed: 0.15, green: 0.55, blue: 0.82, alpha: 1.0),              // #268bd2 Blue
+        codeBackgroundColor: NSColor(calibratedRed: 0.93, green: 0.90, blue: 0.83, alpha: 1.0),    // #eee8d5 Base2
+        codeTextColor: NSColor(calibratedRed: 0.40, green: 0.48, blue: 0.51, alpha: 1.0),          // Base00
+        blockquoteColor: NSColor(calibratedRed: 0.51, green: 0.58, blue: 0.59, alpha: 1.0),        // Base0
+        selectionColor: NSColor(calibratedRed: 0.93, green: 0.90, blue: 0.83, alpha: 0.6),         // Selection
+        cursorColor: NSColor(calibratedRed: 0.83, green: 0.37, blue: 0.00, alpha: 1.0),            // Orange
+        lineNumberColor: NSColor(calibratedRed: 0.51, green: 0.58, blue: 0.59, alpha: 1.0),        // Base0
+        syntaxColors: .solarizedLight,
+        bodyFontName: "-apple-system",
+        headingFontName: "-apple-system",
+        codeFontName: "SF Mono",
+        baseFontSize: 16,
+        lineHeightMultiple: 1.4,
+        cornerRadius: 0,
+        contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
+        useShadows: false,
+        animationDuration: 0.25
+    )
+
     /// All available themes
     static let all: [ParchmentTheme] = [
         .minimal,
         .elegant,
         .midnight,
         .sepia,
-        .highContrast
+        .highContrast,
+        .dracula,
+        .nord,
+        .solarizedDark,
+        .solarizedLight
     ]
     
     /// Get theme by name
