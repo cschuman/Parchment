@@ -106,7 +106,18 @@ final class EnhancedMarkdownRenderer {
 
     private func visitText(_ text: Markdown.Text, context: RenderContext) {
         let smartText = typographyEngine.applySmartTypography(to: text.string)
-        context.attributedString.append(NSAttributedString(string: smartText, attributes: context.currentAttributes))
+
+        // Check for math expressions
+        let mathExpressions = MathRenderer.shared.findMathExpressions(in: smartText)
+
+        if mathExpressions.isEmpty {
+            // No math, just add the text
+            context.attributedString.append(NSAttributedString(string: smartText, attributes: context.currentAttributes))
+        } else {
+            // Process text with math expressions
+            let processed = MathRenderer.shared.processText(smartText, baseAttributes: context.currentAttributes, theme: theme)
+            context.attributedString.append(processed)
+        }
     }
 
     private func visitStrong(_ strong: Strong, context: RenderContext) {
