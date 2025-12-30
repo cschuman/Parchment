@@ -285,7 +285,7 @@ extension SmartTableView: NSTableViewDelegate {
         cellView.textField?.stringValue = data.rows[actualRow][safe: columnIndex] ?? ""
         cellView.textField?.alignment = alignmentToNSTextAlignment(data.alignments[safe: columnIndex] ?? .left)
         
-        if let numValue = Double(cellView.textField?.stringValue ?? "") {
+        if Double(cellView.textField?.stringValue ?? "") != nil {
             cellView.textField?.textColor = NSColor.systemBlue
             cellView.textField?.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         } else {
@@ -356,7 +356,7 @@ class StickyHeaderView: NSView {
         
         var xOffset: CGFloat = -scrollOffset + 12
         
-        for (index, header) in headers.enumerated() {
+        for header in headers {
             let attributedString = NSAttributedString(string: header, attributes: attributes)
             let size = attributedString.size()
             

@@ -3,69 +3,16 @@ import Cocoa
 /// Enhanced typography engine for beautiful markdown rendering
 final class TypographyEngine {
     
-    struct TypographySettings {
-        var baseFontSize: CGFloat = 16
-        var lineHeightMultiple: CGFloat = 1.6
-        var paragraphSpacing: CGFloat = 12
-        var useOpticalSizing: Bool = true
-        var enableLigatures: Bool = true
-        var enableKerning: Bool = true
-        var theme: TypographyTheme = .default
+    private let theme: ParchmentTheme
+    private let zoomLevel: CGFloat
+    
+    init(theme: ParchmentTheme = ParchmentTheme.current, zoomLevel: CGFloat = 1.0) {
+        self.theme = theme
+        self.zoomLevel = zoomLevel
     }
     
-    enum TypographyTheme {
-        case `default`
-        case serif
-        case mono
-        case elegant
-        
-        var bodyFont: String {
-            switch self {
-            case .default: return "-apple-system"
-            case .serif: return "New York"
-            case .mono: return "SF Mono"
-            case .elegant: return "Hoefler Text"
-            }
-        }
-        
-        var headingFont: String {
-            switch self {
-            case .default: return "-apple-system"
-            case .serif: return "New York"
-            case .mono: return "SF Mono"
-            case .elegant: return "Hoefler Text"
-            }
-        }
-        
-        var codeFont: String {
-            return "SF Mono"
-        }
-    }
-    
-    private let settings: TypographySettings
-    
-    init(settings: TypographySettings = TypographySettings()) {
-        self.settings = settings
-    }
-    
-    /// Create optimized paragraph style for body text
-    func bodyParagraphStyle() -> NSMutableParagraphStyle {
-        let style = NSMutableParagraphStyle()
-        style.lineHeightMultiple = settings.lineHeightMultiple
-        style.paragraphSpacing = settings.paragraphSpacing
-        style.paragraphSpacingBefore = 0
-        style.lineBreakMode = .byWordWrapping
-        
-        // Add subtle first-line indent for better readability
-        style.firstLineHeadIndent = 0
-        style.headIndent = 0
-        style.tailIndent = 0
-        
-        return style
-    }
-    
-    /// Create heading attributes with perfect visual hierarchy
-    func headingAttributes(level: Int, zoomLevel: CGFloat = 1.0) -> [NSAttributedString.Key: Any] {
+    /// Create heading attributes with golden ratio scaling
+    func headingAttributes(level: Int) -> [NSAttributedString.Key: Any] {
         // Golden ratio inspired scaling
         let scales: [CGFloat] = [
             0,      // unused
@@ -78,7 +25,7 @@ final class TypographyEngine {
         ]
         
         let scale = scales[min(level, 6)]
-        let fontSize = settings.baseFontSize * scale * zoomLevel
+        let fontSize = theme.baseFontSize * scale * zoomLevel
         
         // Use different weights for hierarchy
         let weight: NSFont.Weight = {
@@ -91,7 +38,7 @@ final class TypographyEngine {
         }()
         
         let font = createFont(
-            name: settings.theme.headingFont,
+            name: theme.headingFontName,
             size: fontSize,
             weight: weight
         )
@@ -99,17 +46,17 @@ final class TypographyEngine {
         // Tighter line height for headings
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineHeightMultiple = 1.2
-        paragraphStyle.paragraphSpacingBefore = settings.paragraphSpacing * 1.5
-        paragraphStyle.paragraphSpacing = settings.paragraphSpacing * 0.75
+        paragraphStyle.paragraphSpacingBefore = 16
+        paragraphStyle.paragraphSpacing = 8
         
         var attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: theme.headingColor,
             .paragraphStyle: paragraphStyle
         ]
         
         // Add kerning for large headings
-        if level <= 2 && settings.enableKerning {
+        if level <= 2 {
             attributes[.kern] = -0.5
         }
         
@@ -117,152 +64,117 @@ final class TypographyEngine {
     }
     
     /// Create body text attributes with optimal readability
-    func bodyAttributes(zoomLevel: CGFloat = 1.0) -> [NSAttributedString.Key: Any] {
+    func bodyAttributes() -> [NSAttributedString.Key: Any] {
         let font = createFont(
-            name: settings.theme.bodyFont,
-            size: settings.baseFontSize * zoomLevel,
+            name: theme.bodyFontName,
+            size: theme.baseFontSize * zoomLevel,
             weight: .regular
         )
         
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineHeightMultiple = theme.lineHeightMultiple
+        paragraphStyle.paragraphSpacing = 8
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        
         var attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: bodyParagraphStyle()
+            .foregroundColor: theme.textColor,
+            .paragraphStyle: paragraphStyle
         ]
         
         // Enable ligatures for better text flow
-        if settings.enableLigatures {
-            attributes[.ligature] = 1
-        }
+        attributes[.ligature] = 1
         
         return attributes
     }
     
-    /// Create code block attributes with monospace font
-    func codeBlockAttributes(zoomLevel: CGFloat = 1.0) -> [NSAttributedString.Key: Any] {
-        let fontSize = (settings.baseFontSize * 0.9) * zoomLevel
+    /// Create code block attributes
+    func codeBlockAttributes() -> [NSAttributedString.Key: Any] {
+        let fontSize = theme.baseFontSize * 0.9 * zoomLevel
         let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineHeightMultiple = 1.4
-        paragraphStyle.paragraphSpacing = settings.paragraphSpacing
-        
-        // Add background for code blocks
-        let backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5)
+        paragraphStyle.lineHeightMultiple = 1.3
+        paragraphStyle.paragraphSpacing = 8
         
         return [
             .font: font,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: backgroundColor,
+            .foregroundColor: theme.codeTextColor,
+            .backgroundColor: theme.codeBackgroundColor,
             .paragraphStyle: paragraphStyle
         ]
     }
     
     /// Create inline code attributes
-    func inlineCodeAttributes(zoomLevel: CGFloat = 1.0) -> [NSAttributedString.Key: Any] {
-        let fontSize = (settings.baseFontSize * 0.9) * zoomLevel
+    func inlineCodeAttributes() -> [NSAttributedString.Key: Any] {
+        let fontSize = theme.baseFontSize * 0.9 * zoomLevel
         let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         
-        let backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.3)
-        
         return [
             .font: font,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: backgroundColor
+            .foregroundColor: theme.codeTextColor,
+            .backgroundColor: theme.codeBackgroundColor
         ]
     }
     
-    /// Create blockquote attributes with visual distinction
-    func blockquoteAttributes(zoomLevel: CGFloat = 1.0) -> [NSAttributedString.Key: Any] {
-        let font = createFont(
-            name: settings.theme.bodyFont,
-            size: settings.baseFontSize * zoomLevel,
-            weight: .regular,
-            italic: true
-        )
+    /// Create blockquote attributes
+    func blockquoteAttributes() -> [NSAttributedString.Key: Any] {
+        var attrs = bodyAttributes()
+        if let font = attrs[.font] as? NSFont {
+            let italicDescriptor = font.fontDescriptor.withSymbolicTraits(.italic)
+            attrs[.font] = NSFont(descriptor: italicDescriptor, size: font.pointSize)
+        }
+        attrs[.foregroundColor] = theme.blockquoteColor
         
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineHeightMultiple = settings.lineHeightMultiple
-        paragraphStyle.headIndent = 30
-        paragraphStyle.firstLineHeadIndent = 30
-        paragraphStyle.paragraphSpacing = settings.paragraphSpacing
+        if let paragraphStyle = attrs[.paragraphStyle] as? NSMutableParagraphStyle {
+            paragraphStyle.headIndent = 30
+            paragraphStyle.firstLineHeadIndent = 30
+        }
         
-        return [
-            .font: font,
-            .foregroundColor: NSColor.secondaryLabelColor,
-            .paragraphStyle: paragraphStyle
-        ]
+        return attrs
     }
     
-    /// Create emphasis (italic) attributes
-    func emphasisAttributes(baseFont: NSFont) -> [NSAttributedString.Key: Any] {
-        let italicFont = NSFontManager.shared.convert(
-            baseFont,
-            toHaveTrait: .italicFontMask
-        )
+    /// Apply smart typography replacements
+    func applySmartTypography(to text: String) -> String {
+        var result = text
         
-        return [.font: italicFont]
-    }
-    
-    /// Create strong (bold) attributes
-    func strongAttributes(baseFont: NSFont) -> [NSAttributedString.Key: Any] {
-        let boldFont = NSFontManager.shared.convert(
-            baseFont,
-            toHaveTrait: .boldFontMask
-        )
+        // Smart quotes - handle opening and closing separately
+        result = result.replacingOccurrences(of: "\"([^\"]*?)\"", 
+                                            with: "\u{201C}$1\u{201D}", 
+                                            options: .regularExpression)
+        result = result.replacingOccurrences(of: "'([^']*?)'", 
+                                            with: "\u{2018}$1\u{2019}", 
+                                            options: .regularExpression)
         
-        return [.font: boldFont]
-    }
-    
-    /// Create link attributes with subtle styling
-    func linkAttributes() -> [NSAttributedString.Key: Any] {
-        return [
-            .foregroundColor: NSColor.linkColor,
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
-            .underlineColor: NSColor.linkColor.withAlphaComponent(0.3),
-            .cursor: NSCursor.pointingHand
-        ]
+        // Handle apostrophes
+        result = result.replacingOccurrences(of: "([a-zA-Z])'([a-zA-Z])", 
+                                            with: "$1\u{2019}$2", 
+                                            options: .regularExpression)
+        
+        // Em dashes
+        result = result.replacingOccurrences(of: "--", with: "\u{2014}")
+        result = result.replacingOccurrences(of: " - ", with: " \u{2014} ")
+        
+        // Ellipsis
+        result = result.replacingOccurrences(of: "...", with: "\u{2026}")
+        
+        return result
     }
     
     // MARK: - Private Helpers
     
-    private func createFont(name: String, size: CGFloat, weight: NSFont.Weight = .regular, italic: Bool = false) -> NSFont {
-        var font: NSFont
-        
+    private func createFont(name: String, size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
         if name == "-apple-system" {
-            font = NSFont.systemFont(ofSize: size, weight: weight)
+            return NSFont.systemFont(ofSize: size, weight: weight)
         } else if let customFont = NSFont(name: name, size: size) {
-            font = customFont
-        } else {
-            font = NSFont.systemFont(ofSize: size, weight: weight)
-        }
-        
-        // Apply optical sizing if available and enabled
-        if settings.useOpticalSizing {
-            if let opticalFont = applyOpticalSizing(to: font) {
-                font = opticalFont
+            // Try to apply weight if possible
+            let traits: NSFontTraitMask = weight == .bold ? .boldFontMask : []
+            if traits != [] {
+                return NSFontManager.shared.convert(customFont, toHaveTrait: traits)
             }
+            return customFont
+        } else {
+            return NSFont.systemFont(ofSize: size, weight: weight)
         }
-        
-        // Apply italic if needed
-        if italic {
-            font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask)
-        }
-        
-        return font
-    }
-    
-    private func applyOpticalSizing(to font: NSFont) -> NSFont? {
-        // Create font descriptor with optical size attribute
-        let descriptor = font.fontDescriptor.addingAttributes([
-            .featureSettings: [
-                [
-                    NSFontDescriptor.FeatureKey.typeIdentifier: kStylisticAlternativesType,
-                    NSFontDescriptor.FeatureKey.selectorIdentifier: kStylisticAltOneOnSelector
-                ]
-            ]
-        ])
-        
-        return NSFont(descriptor: descriptor, size: font.pointSize)
     }
 }

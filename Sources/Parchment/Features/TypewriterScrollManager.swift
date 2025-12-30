@@ -88,7 +88,7 @@ final class TypewriterScrollManager: NSObject {
               let scrollView = scrollView,
               let textStorage = textView.textStorage,
               let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer else { return }
+              textView.textContainer != nil else { return }
         
         let selectedRange = textView.selectedRange()
         guard selectedRange.location < textStorage.length else { return }

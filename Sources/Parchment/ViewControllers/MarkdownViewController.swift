@@ -6,19 +6,14 @@ import WebKit
 typealias MDText = Markdown.Text
 
 class MarkdownViewController: NSViewController {
-    internal var scrollView: NSScrollView!
-    internal var textView: MarkdownTextView!
-    private var webView: WKWebView?
-    internal var currentDocument: MarkdownDocument?
-    internal var typewriterScrollingEnabled = false
+    private(set) var scrollView: NSScrollView!
+    private(set) var textView: MarkdownTextView!
+    private(set) var currentDocument: MarkdownDocument?
+    private(set) var typewriterScrollingEnabled = false
     private var zoomLevel: CGFloat = 1.0
     private var statisticsOverlay: StatisticsOverlayView?
-    internal var visibleRange: NSRange = NSRange(location: 0, length: 0)
-    private var isLargeDocument = false
-    private var currentCursorLine: Int = 0
-    
+
     // Extracted components
-    private let syntaxHighlighter: SyntaxHighlighting = CodeSyntaxHighlighter()
     private var gestureManager: MarkdownGestureManager?
     private var typewriterManager: TypewriterScrollManager?
     private var statisticsManager: ReadingStatisticsManager?
@@ -33,7 +28,11 @@ class MarkdownViewController: NSViewController {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
     }
-    
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         setupViews()
@@ -59,7 +58,7 @@ class MarkdownViewController: NSViewController {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(themeDidChange),
-            name: ThemeManager.themeDidChangeNotification,
+            name: .themeDidChange,
             object: nil
         )
         
@@ -77,6 +76,9 @@ class MarkdownViewController: NSViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.drawsBackground = true
         scrollView.backgroundColor = NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)
+        
+        // Enable smooth scrolling with spring physics
+        scrollView.enableSmoothScrolling()
         
         textView = MarkdownTextView()
         textView.isEditable = false
@@ -150,110 +152,52 @@ class MarkdownViewController: NSViewController {
     }
     
     private func loadNormalDocument(_ document: MarkdownDocument) {
-        
-        // Track parse time
-        let parseStart = CFAbsoluteTimeGetCurrent()
-        
-        // Parse with swift-markdown (supports strikethrough, tables, etc.)
-        let parsedDoc = Document(parsing: document.content)
-        
-        let parseTime = CFAbsoluteTimeGetCurrent() - parseStart
-        statusBarDelegate?.updateParseTime(parseTime)
-        
-        // Track render time
-        let renderStart = CFAbsoluteTimeGetCurrent()
-        
-        // Use enhanced renderer with current theme
-        let currentTheme = ThemeManager.shared.currentParchmentTheme ?? ParchmentTheme.minimal
-        let renderer = EnhancedMarkdownRenderer(theme: currentTheme, zoomLevel: zoomLevel)
-        let attributedString = renderer.render(parsedDoc)
-        
-        let renderTime = CFAbsoluteTimeGetCurrent() - renderStart
-        statusBarDelegate?.updateRenderTime(renderTime)
-        
-        // Set the attributed string on main thread
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { 
-                return 
+        // Capture values needed for background work
+        let content = document.content
+        let currentTheme = ParchmentTheme.current
+        let zoom = zoomLevel
+
+        // Parse and render on background thread to avoid blocking UI
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            // Track parse time
+            let parseStart = CFAbsoluteTimeGetCurrent()
+
+            // Parse with swift-markdown (supports strikethrough, tables, etc.)
+            let parsedDoc = Document(parsing: content)
+
+            let parseTime = CFAbsoluteTimeGetCurrent() - parseStart
+
+            // Track render time
+            let renderStart = CFAbsoluteTimeGetCurrent()
+
+            // Use enhanced renderer with current theme
+            let renderer = EnhancedMarkdownRenderer(theme: currentTheme, zoomLevel: zoom)
+            let attributedString = renderer.render(parsedDoc)
+
+            let renderTime = CFAbsoluteTimeGetCurrent() - renderStart
+
+            // Update UI on main thread
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+
+                // Update timing metrics
+                self.statusBarDelegate?.updateParseTime(parseTime)
+                self.statusBarDelegate?.updateRenderTime(renderTime)
+
+                // Set the attributed string
+                self.textView.textStorage?.setAttributedString(attributedString)
+
+                // Ensure text view is sized properly
+                self.textView.sizeToFit()
+
+                // Scroll to top
+                self.textView.scrollToBeginningOfDocument(nil)
+
+                // Force update
+                self.textView.needsDisplay = true
             }
-            
-            // Set the attributed string
-            self.textView.textStorage?.setAttributedString(attributedString)
-            
-            // Ensure text view is sized properly
-            self.textView.sizeToFit()
-            
-            // TOC update removed - simplified
-            
-            // Scroll to top
-            self.textView.scrollToBeginningOfDocument(nil)
-            
-            // Force update
-            self.textView.needsDisplay = true
         }
     }
-    
-    private func createImagePlaceholder(size: NSSize, text: String) -> NSImage {
-        let image = NSImage(size: size)
-        image.lockFocus()
-        
-        // Fill with light gray background
-        NSColor.controlBackgroundColor.set()
-        NSRect(origin: .zero, size: size).fill()
-        
-        // Draw border
-        NSColor.tertiaryLabelColor.set()
-        NSRect(origin: .zero, size: size).frame()
-        
-        // Draw text
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12),
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-        let attrString = NSAttributedString(string: text, attributes: attrs)
-        let textSize = attrString.size()
-        let textRect = NSRect(
-            x: (size.width - textSize.width) / 2,
-            y: (size.height - textSize.height) / 2,
-            width: textSize.width,
-            height: textSize.height
-        )
-        attrString.draw(in: textRect)
-        
-        image.unlockFocus()
-        return image
-    }
-    
-    private func scaleImage(_ image: NSImage, maxWidth: CGFloat) -> NSImage {
-        let originalSize = image.size
-        
-        // If image is smaller than max width, return as-is
-        if originalSize.width <= maxWidth {
-            return image
-        }
-        
-        // Calculate new size maintaining aspect ratio
-        let aspectRatio = originalSize.height / originalSize.width
-        let newWidth = maxWidth
-        let newHeight = newWidth * aspectRatio
-        let newSize = NSSize(width: newWidth, height: newHeight)
-        
-        // Create new image with scaled size
-        let newImage = NSImage(size: newSize)
-        newImage.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize))
-        newImage.unlockFocus()
-        
-        return newImage
-    }
-    
-    private func highlightCode(_ code: String, language: String?) -> NSAttributedString {
-        // Delegate to the extracted syntax highlighter
-        let fontSize = textView?.font?.pointSize ?? 13
-        let theme = ThemeManager.shared.currentTheme
-        return syntaxHighlighter.highlight(code: code, language: language, fontSize: fontSize, theme: theme)
-    }
-    
     
     
     func updateDocument(_ document: MarkdownDocument, diff: DiffHighlighter.DiffResult) {
@@ -423,24 +367,51 @@ class MarkdownViewController: NSViewController {
         applyZoom()
     }
     
+    func applyTheme(_ theme: ParchmentTheme) {
+        // Clear text storage first to prevent bleed
+        textView?.textStorage?.setAttributedString(NSAttributedString())
+        
+        // Apply theme to scroll view and text view
+        scrollView?.backgroundColor = theme.backgroundColor
+        scrollView?.drawsBackground = true
+        
+        textView?.backgroundColor = theme.backgroundColor
+        textView?.textColor = theme.textColor
+        textView?.insertionPointColor = theme.cursorColor
+        textView?.selectedTextAttributes = [
+            .backgroundColor: theme.selectionColor
+        ]
+        textView?.drawsBackground = true
+        
+        // Force view updates
+        scrollView?.needsDisplay = true
+        textView?.needsDisplay = true
+        
+        // Theme is already persisted via ParchmentTheme.current setter
+        
+        // Rerender document with new theme
+        if let document = currentDocument {
+            // Use new renderer with updated theme
+            let renderer = EnhancedMarkdownRenderer(theme: theme, zoomLevel: zoomLevel)
+            let parsedDoc = Document(parsing: document.content)
+            let attributedString = renderer.render(parsedDoc)
+            
+            // Set the new attributed string
+            textView?.textStorage?.setAttributedString(attributedString)
+            textView?.sizeToFit()
+            textView?.needsDisplay = true
+        }
+    }
+    
     private func applyZoom() {
         guard let document = currentDocument else { return }
         loadDocument(document)
     }
     
     @objc private func scrollViewDidScroll(_ notification: Notification) {
-        updateVisibleRange()
-        // Simplified - no special handling for large documents
+        // Scroll notification handled - can be extended for features like progress tracking
     }
-    
-    private func updateVisibleRange() {
-        let visibleRect = scrollView.contentView.visibleRect
-        let glyphRange = textView.layoutManager?.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer!)
-        if let characterRange = textView.layoutManager?.characterRange(forGlyphRange: glyphRange ?? NSRange(), actualGlyphRange: nil) {
-            visibleRange = characterRange
-        }
-    }
-    
+
     @objc private func preferencesChanged() {
         applyPreferences()
         if let document = currentDocument {
@@ -449,60 +420,27 @@ class MarkdownViewController: NSViewController {
     }
     
     @objc private func themeDidChange() {
+        // Apply theme to views
+        let theme = ParchmentTheme.current
+        textView.applyTheme(theme)
+        scrollView.applyTheme(theme)
+
         // Re-render with new theme
         if let document = currentDocument {
             loadNormalDocument(document)
         }
-        
-        // Apply theme to text view
-        if let theme = ThemeManager.shared.currentParchmentTheme {
-            textView.applyTheme(theme)
-            scrollView.applyTheme(theme)
-        }
     }
     
     private func applyPreferences() {
-        // Apply theme
-        let theme = UserDefaults.standard.string(forKey: "theme") ?? "System"
+        // Apply current theme from ParchmentTheme
+        let theme = ParchmentTheme.current
         applyTheme(theme)
-        
+
         // Apply typewriter mode
         if UserDefaults.standard.bool(forKey: "typewriterMode") {
             enableTypewriterScrolling()
         } else {
             disableTypewriterScrolling()
-        }
-        
-        // Apply focus mode default
-        if UserDefaults.standard.bool(forKey: "focusModeDefault") {
-            // Enable focus mode if set as default
-        }
-    }
-    
-    private func applyTheme(_ theme: String) {
-        switch theme {
-        case "Dark":
-            scrollView.backgroundColor = NSColor(calibratedWhite: 0.1, alpha: 1.0)
-            textView.backgroundColor = NSColor(calibratedWhite: 0.1, alpha: 1.0)
-            textView.textColor = NSColor.white
-        case "High Contrast":
-            scrollView.backgroundColor = NSColor.black
-            textView.backgroundColor = NSColor.black
-            textView.textColor = NSColor.white
-        case "Solarized Light":
-            let bg = NSColor(calibratedRed: 0.99, green: 0.96, blue: 0.89, alpha: 1.0)
-            scrollView.backgroundColor = bg
-            textView.backgroundColor = bg
-            textView.textColor = NSColor(calibratedRed: 0.4, green: 0.48, blue: 0.51, alpha: 1.0)
-        case "Solarized Dark":
-            let bg = NSColor(calibratedRed: 0.0, green: 0.17, blue: 0.21, alpha: 1.0)
-            scrollView.backgroundColor = bg
-            textView.backgroundColor = bg
-            textView.textColor = NSColor(calibratedRed: 0.51, green: 0.58, blue: 0.59, alpha: 1.0)
-        default: // Light/System
-            scrollView.backgroundColor = NSColor(calibratedRed: 0.97, green: 0.97, blue: 0.98, alpha: 1.0)
-            textView.backgroundColor = NSColor.textBackgroundColor
-            textView.textColor = NSColor.labelColor
         }
     }
     
@@ -539,14 +477,4 @@ extension MarkdownViewController: GestureManagerDelegate {
     }
 }
 
-struct SyntaxColors {
-    let keyword = NSColor.systemPurple
-    let string = NSColor.systemRed
-    let comment = NSColor.systemGreen
-    let number = NSColor.systemBlue
-    let type = NSColor.systemTeal
-    let function = NSColor.systemIndigo
-    let variable = NSColor.systemOrange
-    let operatorColor = NSColor.systemBrown
-}
 

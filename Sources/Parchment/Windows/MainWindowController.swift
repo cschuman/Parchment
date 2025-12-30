@@ -36,11 +36,12 @@ class MainWindowController: NSWindowController {
     
     private func setupViews() {
         // Create main vertical stack view to hold content and status bar
-        contentStackView = NSStackView()
-        contentStackView!.orientation = .vertical
-        contentStackView!.spacing = 0
-        contentStackView!.distribution = .fill
-        contentStackView!.translatesAutoresizingMaskIntoConstraints = false
+        let stackView = NSStackView()
+        stackView.orientation = .vertical
+        stackView.spacing = 0
+        stackView.distribution = .fill
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        contentStackView = stackView
         
         // Create split view for TOC and markdown content
         splitView = NSSplitView()
@@ -89,21 +90,29 @@ class MainWindowController: NSWindowController {
         dropView?.dropDelegate = self
         dropView?.translatesAutoresizingMaskIntoConstraints = false
         dropView?.wantsLayer = true
-        
-        dropView?.addSubview(findBarView!)
-        dropView?.addSubview(contentStackView!)
-        
+
+        // Safely add subviews and set constraints
+        guard let dropView = dropView,
+              let findBarView = findBarView,
+              let contentStackView = contentStackView else {
+            Logger.error("Failed to initialize main window views")
+            return
+        }
+
+        dropView.addSubview(findBarView)
+        dropView.addSubview(contentStackView)
+
         window?.contentView = dropView
-        
+
         NSLayoutConstraint.activate([
-            findBarView!.topAnchor.constraint(equalTo: dropView!.topAnchor),
-            findBarView!.leadingAnchor.constraint(equalTo: dropView!.leadingAnchor),
-            findBarView!.trailingAnchor.constraint(equalTo: dropView!.trailingAnchor),
-            
-            contentStackView!.topAnchor.constraint(equalTo: findBarView!.bottomAnchor),
-            contentStackView!.leadingAnchor.constraint(equalTo: dropView!.leadingAnchor),
-            contentStackView!.trailingAnchor.constraint(equalTo: dropView!.trailingAnchor),
-            contentStackView!.bottomAnchor.constraint(equalTo: dropView!.bottomAnchor)
+            findBarView.topAnchor.constraint(equalTo: dropView.topAnchor),
+            findBarView.leadingAnchor.constraint(equalTo: dropView.leadingAnchor),
+            findBarView.trailingAnchor.constraint(equalTo: dropView.trailingAnchor),
+
+            contentStackView.topAnchor.constraint(equalTo: findBarView.bottomAnchor),
+            contentStackView.leadingAnchor.constraint(equalTo: dropView.leadingAnchor),
+            contentStackView.trailingAnchor.constraint(equalTo: dropView.trailingAnchor),
+            contentStackView.bottomAnchor.constraint(equalTo: dropView.bottomAnchor)
         ])
         
         tocViewController?.view.isHidden = true
@@ -295,6 +304,41 @@ class MainWindowController: NSWindowController {
     
     func resetZoom() {
         markdownViewController?.resetZoom()
+    }
+    
+    func applyTheme(_ theme: ParchmentTheme) {
+        // Apply theme to window background
+        window?.backgroundColor = theme.backgroundColor
+        window?.contentView?.layer?.backgroundColor = theme.backgroundColor.cgColor
+        
+        // Apply theme to drop view
+        dropView?.layer?.backgroundColor = theme.backgroundColor.cgColor
+        dropView?.needsDisplay = true
+        
+        // Apply theme to split view (NSSplitView doesn't have backgroundColor directly)
+        splitView?.wantsLayer = true
+        splitView?.layer?.backgroundColor = theme.backgroundColor.cgColor
+        splitView?.needsDisplay = true
+        
+        // Apply theme to content stack view
+        contentStackView?.layer?.backgroundColor = theme.backgroundColor.cgColor
+        
+        // Apply theme to find bar
+        findBarView?.layer?.backgroundColor = theme.backgroundColor.cgColor
+        
+        // Apply theme to TOC
+        tocViewController?.applyTheme(theme)
+        
+        // Apply theme to markdown view (this handles re-rendering)
+        markdownViewController?.applyTheme(theme)
+        
+        // Apply theme to status bar
+        statusBarView?.applyTheme(theme)
+        
+        // Force window and all subviews to redraw
+        window?.display()
+        window?.contentView?.needsDisplay = true
+        window?.contentView?.subviews.forEach { $0.needsDisplay = true }
     }
     
     func exportDocument(format: DocumentExporter.ExportFormat) {

@@ -2,41 +2,43 @@ import Cocoa
 
 /// Protocol defining syntax highlighting capabilities
 protocol SyntaxHighlighting {
-    func highlight(code: String, language: String?, fontSize: CGFloat, theme: Theme) -> NSAttributedString
+    func highlight(code: String, language: String?, fontSize: CGFloat, theme: ParchmentTheme) -> NSAttributedString
 }
 
 /// High-performance syntax highlighter for code blocks
 final class CodeSyntaxHighlighter: SyntaxHighlighting {
-    
+
     // MARK: - Properties
-    
+
     private let defaultFont: NSFont
     private let cache = NSCache<NSString, NSAttributedString>()
-    
+    private static var regexCache: [String: NSRegularExpression] = [:]
+    private static let regexCacheLock = NSLock()
+
     // MARK: - Initialization
-    
+
     init(defaultFont: NSFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)) {
         self.defaultFont = defaultFont
         cache.countLimit = 100 // Limit cache size
     }
-    
+
     // MARK: - Public Interface
-    
-    func highlight(code: String, language: String?, fontSize: CGFloat, theme: Theme) -> NSAttributedString {
-        // Check cache first
+
+    func highlight(code: String, language: String?, fontSize: CGFloat, theme: ParchmentTheme) -> NSAttributedString {
+        // Use hashValue for unique cache keys (avoids prefix collisions)
         let cacheKey = "\(code.hashValue)-\(language ?? "")-\(fontSize)-\(theme.name)" as NSString
         if let cached = cache.object(forKey: cacheKey) {
             return cached
         }
-        
+
         let result = performHighlighting(code: code, language: language, fontSize: fontSize, theme: theme)
         cache.setObject(result, forKey: cacheKey)
         return result
     }
-    
+
     // MARK: - Private Implementation
-    
-    private func performHighlighting(code: String, language: String?, fontSize: CGFloat, theme: Theme) -> NSAttributedString {
+
+    private func performHighlighting(code: String, language: String?, fontSize: CGFloat, theme: ParchmentTheme) -> NSAttributedString {
         let baseFont = NSFont.monospacedSystemFont(ofSize: fontSize * 0.9, weight: .regular)
         let colors = theme.syntaxColors
         
@@ -282,19 +284,36 @@ extension CodeSyntaxHighlighter {
     }
     
     // MARK: - Helper Methods
-    
-    private func highlightPattern(_ pattern: String, in attributedString: NSMutableAttributedString, color: NSColor, font: NSFont, options: NSRegularExpression.Options = []) {
+
+    private func cachedRegex(pattern: String, options: NSRegularExpression.Options) -> NSRegularExpression? {
+        let key = "\(pattern)-\(options.rawValue)"
+
+        Self.regexCacheLock.lock()
+        defer { Self.regexCacheLock.unlock() }
+
+        if let cached = Self.regexCache[key] {
+            return cached
+        }
+
         do {
             let regex = try NSRegularExpression(pattern: pattern, options: options)
-            let range = NSRange(location: 0, length: attributedString.length)
-            
-            regex.enumerateMatches(in: attributedString.string, options: [], range: range) { match, _, _ in
-                guard let matchRange = match?.range else { return }
-                attributedString.addAttribute(.foregroundColor, value: color, range: matchRange)
-                attributedString.addAttribute(.font, value: font, range: matchRange)
-            }
+            Self.regexCache[key] = regex
+            return regex
         } catch {
-            Logger.error("Regex error: \(error)")
+            Logger.error("Regex compilation error for pattern '\(pattern)': \(error)")
+            return nil
+        }
+    }
+
+    private func highlightPattern(_ pattern: String, in attributedString: NSMutableAttributedString, color: NSColor, font: NSFont, options: NSRegularExpression.Options = []) {
+        guard let regex = cachedRegex(pattern: pattern, options: options) else { return }
+
+        let range = NSRange(location: 0, length: attributedString.length)
+
+        regex.enumerateMatches(in: attributedString.string, options: [], range: range) { match, _, _ in
+            guard let matchRange = match?.range else { return }
+            attributedString.addAttribute(.foregroundColor, value: color, range: matchRange)
+            attributedString.addAttribute(.font, value: font, range: matchRange)
         }
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import Cocoa
 
 /// Manages diff highlighting when documents are refreshed
-class DiffHighlighter {
+final class DiffHighlighter {
     
     struct DiffResult {
         let added: [NSRange]
@@ -204,7 +204,6 @@ class DiffHighlighter {
         var currentLocation = 0
         
         // Create sets of common line indices
-        let commonOldIndices = Set(lcs.map { $0.oldIndex })
         let commonNewIndices = Set(lcs.map { $0.newIndex })
         
         // Check for lines that exist in similar positions but aren't identical
@@ -278,7 +277,7 @@ extension DiffHighlighter {
         in textView: NSTextView,
         diff: DiffResult
     ) {
-        guard let textStorage = textView.textStorage else { return }
+        guard textView.textStorage != nil else { return }
         
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.3

@@ -33,12 +33,17 @@ class FindBarView: NSView {
         searchField.target = self
         searchField.action = #selector(searchFieldChanged(_:))
         searchField.delegate = self
-        
+        searchField.setAccessibilityLabel("Search in document")
+        searchField.setAccessibilityIdentifier("findBarSearchField")
+
         // Results label
         resultsLabel = NSTextField(labelWithString: "")
         resultsLabel.font = NSFont.systemFont(ofSize: 11)
         resultsLabel.textColor = NSColor.secondaryLabelColor
         resultsLabel.translatesAutoresizingMaskIntoConstraints = false
+        resultsLabel.setAccessibilityElement(true)
+        resultsLabel.setAccessibilityRole(.staticText)
+        resultsLabel.setAccessibilityLabel("Search results count")
         
         // Navigation buttons
         previousButton = NSButton(image: NSImage(systemSymbolName: "chevron.up", accessibilityDescription: "Previous")!, target: self, action: #selector(findPrevious))

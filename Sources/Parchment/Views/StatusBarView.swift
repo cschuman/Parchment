@@ -7,6 +7,15 @@ class StatusBarView: NSView {
     private var memoryLabel: NSTextField!
     private var systemLabel: NSTextField!
     
+    func applyTheme(_ theme: ParchmentTheme) {
+        // Apply theme to status bar
+        layer?.backgroundColor = theme.backgroundColor.withAlphaComponent(0.95).cgColor
+        statusLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
+        performanceLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
+        memoryLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
+        systemLabel?.textColor = theme.textColor.withAlphaComponent(0.7)
+    }
+    
     private var updateTimer: Timer?
     private var frameRateMonitor: FrameRateMonitor?
     
@@ -48,31 +57,31 @@ class StatusBarView: NSView {
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
         // File info section
-        statusLabel = createLabel()
+        statusLabel = createLabel(accessibilityLabel: "Document information")
         statusLabel.stringValue = "No document"
         stackView.addArrangedSubview(statusLabel)
-        
+
         // Add separator
         stackView.addArrangedSubview(createSeparator())
-        
+
         // Performance section
-        performanceLabel = createLabel()
+        performanceLabel = createLabel(accessibilityLabel: "Performance metrics")
         performanceLabel.stringValue = "Parse: -- | Render: -- | FPS: --"
         stackView.addArrangedSubview(performanceLabel)
-        
+
         // Add separator
         stackView.addArrangedSubview(createSeparator())
-        
+
         // Memory section
-        memoryLabel = createLabel()
+        memoryLabel = createLabel(accessibilityLabel: "Memory usage")
         memoryLabel.stringValue = "Memory: -- | Cache: --"
         stackView.addArrangedSubview(memoryLabel)
-        
+
         // Add separator
         stackView.addArrangedSubview(createSeparator())
-        
+
         // System section
-        systemLabel = createLabel()
+        systemLabel = createLabel(accessibilityLabel: "CPU usage")
         systemLabel.stringValue = "CPU: --"
         stackView.addArrangedSubview(systemLabel)
         
@@ -103,7 +112,7 @@ class StatusBarView: NSView {
         }
     }
     
-    private func createLabel() -> NSTextField {
+    private func createLabel(accessibilityLabel: String? = nil) -> NSTextField {
         let label = NSTextField()
         label.isEditable = false
         label.isBordered = false
@@ -111,6 +120,14 @@ class StatusBarView: NSView {
         label.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
         label.textColor = NSColor.secondaryLabelColor
         label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+
+        // Accessibility
+        label.setAccessibilityElement(true)
+        label.setAccessibilityRole(.staticText)
+        if let accessibilityLabel = accessibilityLabel {
+            label.setAccessibilityLabel(accessibilityLabel)
+        }
+
         return label
     }
     

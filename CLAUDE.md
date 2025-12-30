@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Parchment is a native macOS markdown viewer application built with Swift and AppKit. It provides high-performance markdown rendering with advanced features like wiki-links, backlinks, and Metal-accelerated text rendering.
+Parchment is a native macOS markdown viewer application built with Swift and AppKit. It provides markdown rendering with syntax highlighting, theming support, and a table of contents.
 
 ## Build Commands
 
@@ -61,35 +61,27 @@ open Parchment.app --args test.md
 **View Controllers** (`Sources/Parchment/ViewControllers/`)
 - `MarkdownViewController.swift` - Main view controller for markdown content
 - `TableOfContentsViewController.swift` - TOC navigation panel
-- `BacklinksViewController.swift` - Backlinks panel for wiki-style navigation
 
 **Rendering Pipeline** (`Sources/Parchment/Rendering/`)
-- `MarkdownRenderingEngine.swift` - Core rendering engine using swift-markdown
-- `MetalTextRenderer.swift` - Metal-accelerated text rendering
-- `SyntaxHighlighter.swift` - Code block syntax highlighting using SwiftSyntax
+- `EnhancedMarkdownRenderer.swift` - Core markdown to attributed string renderer
+- `CodeSyntaxHighlighter.swift` - Code block syntax highlighting
 
-**Knowledge Graph** (`Sources/Parchment/KnowledgeGraph/`)
-- `WikiLinkParser.swift` - Parses `[[wiki-links]]` syntax
-- `GraphVisualizationView.swift` - Interactive document relationship visualization
+**Theme System** (`Sources/Parchment/Theme/`)
+- `ParchmentThemes.swift` - Theme definitions (Minimal, Elegant, Midnight, Sepia, High Contrast)
 
 ### Key Design Patterns
 
-1. **Async Rendering**: Uses Swift concurrency for non-blocking markdown rendering
-2. **Caching Strategy**: Multi-level caching (render cache, image cache, document cache)
-3. **File Watching**: Live updates using FSEvents when markdown files change
-4. **Visitor Pattern**: Used in markdown parsing and attributed string generation
+1. **Caching Strategy**: NSCache-based caching for images and documents
+2. **File Watching**: Debounced live updates when markdown files change
+3. **Theming**: Unified theme system with syntax highlighting colors
 
 ## Dependencies
 
 - `swift-markdown` - Apple's markdown parsing library
-- `swift-syntax` - Syntax highlighting for code blocks
-- `swift-markdownkit` - Additional markdown processing
 - `swift-argument-parser` - Command-line argument parsing
 
 ## Development Notes
 
-- The app uses AppKit (not SwiftUI) for performance and native macOS integration
-- Metal rendering is implemented for smooth 60fps scrolling
-- Images are loaded asynchronously with caching for performance
-- The app supports both local and remote images
-- Wiki-links enable Obsidian-style document connections
+- The app uses AppKit (not SwiftUI) for native macOS integration
+- Images are loaded asynchronously with security validation (HTTPS only, size limits)
+- Document exports support PDF, HTML, RTF, DOCX, and plain text formats

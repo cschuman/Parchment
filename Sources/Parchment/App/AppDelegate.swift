@@ -23,18 +23,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Then load file if provided
         if ProcessInfo.processInfo.arguments.count > 1 {
             let path = ProcessInfo.processInfo.arguments[1]
-            
-            // Make path absolute if it's relative
-            let absolutePath: String
-            if path.hasPrefix("/") {
-                absolutePath = path
-            } else {
-                absolutePath = FileManager.default.currentDirectoryPath + "/" + path
-            }
-            
+
+            // Use URL to safely handle relative paths and normalize (prevents path traversal)
+            let baseURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let fileURL = URL(fileURLWithPath: path, relativeTo: baseURL).standardized
+
             // Load the document after window is shown
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.openDocument(at: URL(fileURLWithPath: absolutePath))
+                self?.openDocument(at: fileURL)
             }
         }
         
@@ -68,7 +64,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationWillTerminate(_ notification: Notification) {
         saveRecentDocuments()
-        documentCache.persist()
+        documentCache.persistMetadata()
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -184,6 +180,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         viewMenu.addItem(NSMenuItem(title: "Toggle Table of Contents", action: #selector(toggleTOC), keyEquivalent: "t"))
         viewMenu.addItem(NSMenuItem(title: "Show Reading Statistics", action: #selector(showStatistics), keyEquivalent: "/"))
         viewMenu.addItem(NSMenuItem.separator())
+        
+        // Theme submenu
+        let themeItem = NSMenuItem(title: "Theme", action: nil, keyEquivalent: "")
+        let themeMenu = NSMenu(title: "Theme")
+        themeItem.submenu = themeMenu
+        
+        for (index, theme) in ParchmentTheme.all.enumerated() {
+            let menuItem = NSMenuItem(
+                title: theme.name,
+                action: #selector(selectTheme(_:)),
+                keyEquivalent: index < 9 ? "\(index + 1)" : ""
+            )
+            menuItem.tag = index
+            themeMenu.addItem(menuItem)
+        }
+        viewMenu.addItem(themeItem)
+        viewMenu.addItem(NSMenuItem.separator())
+        
         viewMenu.addItem(NSMenuItem(title: "Toggle Status Bar", action: #selector(toggleStatusBar), keyEquivalent: "b"))
         viewMenu.addItem(NSMenuItem.separator())
         viewMenu.addItem(NSMenuItem(title: "Zoom In", action: #selector(zoomIn), keyEquivalent: "+"))
@@ -380,6 +394,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func toggleTOC() {
         windowController?.toggleTableOfContents()
+    }
+    
+    @objc private func selectTheme(_ sender: NSMenuItem) {
+        guard let theme = ParchmentTheme.theme(at: sender.tag) else { return }
+        ParchmentTheme.current = theme
+        windowController?.applyTheme(theme)
     }
     
     @objc private func showStatistics() {

@@ -1,7 +1,52 @@
 import Cocoa
 
+/// Syntax highlighting colors for code blocks
+public struct SyntaxColors {
+    let keyword: NSColor
+    let string: NSColor
+    let comment: NSColor
+    let number: NSColor
+    let type: NSColor
+    let function: NSColor
+    let variable: NSColor
+    let operatorColor: NSColor
+
+    static let light = SyntaxColors(
+        keyword: NSColor.systemPurple,
+        string: NSColor.systemRed,
+        comment: NSColor.systemGreen,
+        number: NSColor.systemBlue,
+        type: NSColor.systemTeal,
+        function: NSColor.systemIndigo,
+        variable: NSColor.systemOrange,
+        operatorColor: NSColor.systemBrown
+    )
+
+    static let dark = SyntaxColors(
+        keyword: NSColor(calibratedRed: 0.78, green: 0.56, blue: 0.95, alpha: 1.0),
+        string: NSColor(calibratedRed: 0.95, green: 0.54, blue: 0.54, alpha: 1.0),
+        comment: NSColor(calibratedRed: 0.55, green: 0.75, blue: 0.55, alpha: 1.0),
+        number: NSColor(calibratedRed: 0.55, green: 0.75, blue: 0.95, alpha: 1.0),
+        type: NSColor(calibratedRed: 0.55, green: 0.85, blue: 0.85, alpha: 1.0),
+        function: NSColor(calibratedRed: 0.65, green: 0.65, blue: 0.95, alpha: 1.0),
+        variable: NSColor(calibratedRed: 0.95, green: 0.75, blue: 0.55, alpha: 1.0),
+        operatorColor: NSColor(calibratedRed: 0.85, green: 0.75, blue: 0.65, alpha: 1.0)
+    )
+
+    static let sepia = SyntaxColors(
+        keyword: NSColor(calibratedRed: 0.55, green: 0.30, blue: 0.55, alpha: 1.0),
+        string: NSColor(calibratedRed: 0.70, green: 0.35, blue: 0.30, alpha: 1.0),
+        comment: NSColor(calibratedRed: 0.50, green: 0.55, blue: 0.45, alpha: 1.0),
+        number: NSColor(calibratedRed: 0.35, green: 0.50, blue: 0.65, alpha: 1.0),
+        type: NSColor(calibratedRed: 0.40, green: 0.55, blue: 0.55, alpha: 1.0),
+        function: NSColor(calibratedRed: 0.45, green: 0.40, blue: 0.60, alpha: 1.0),
+        variable: NSColor(calibratedRed: 0.65, green: 0.50, blue: 0.35, alpha: 1.0),
+        operatorColor: NSColor(calibratedRed: 0.55, green: 0.45, blue: 0.40, alpha: 1.0)
+    )
+}
+
 /// Beautiful, hand-crafted themes for Parchment
-struct ParchmentTheme {
+public struct ParchmentTheme {
     let name: String
     let backgroundColor: NSColor
     let textColor: NSColor
@@ -13,7 +58,11 @@ struct ParchmentTheme {
     let selectionColor: NSColor
     let cursorColor: NSColor
     let lineNumberColor: NSColor
-    
+    var codeColor: NSColor { codeTextColor }  // Alias for compatibility
+
+    // Syntax highlighting colors
+    let syntaxColors: SyntaxColors
+
     // Typography settings
     let bodyFontName: String
     let headingFontName: String
@@ -43,11 +92,12 @@ extension ParchmentTheme {
         selectionColor: NSColor(calibratedRed: 0.678, green: 0.847, blue: 1.0, alpha: 0.3),
         cursorColor: NSColor(calibratedRed: 0.0, green: 0.478, blue: 1.0, alpha: 1.0),
         lineNumberColor: NSColor(calibratedWhite: 0.7, alpha: 1.0),
+        syntaxColors: .light,
         bodyFontName: "-apple-system",
         headingFontName: "-apple-system",
         codeFontName: "SF Mono",
         baseFontSize: 16,
-        lineHeightMultiple: 1.7,
+        lineHeightMultiple: 1.4,
         cornerRadius: 0,
         contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
         useShadows: false,
@@ -67,11 +117,12 @@ extension ParchmentTheme {
         selectionColor: NSColor(calibratedRed: 0.11, green: 0.56, blue: 0.48, alpha: 0.2),
         cursorColor: NSColor(calibratedRed: 0.11, green: 0.56, blue: 0.48, alpha: 1.0),
         lineNumberColor: NSColor(calibratedWhite: 0.75, alpha: 1.0),
+        syntaxColors: .light,
         bodyFontName: "Charter",
         headingFontName: "Georgia",
         codeFontName: "SF Mono",
         baseFontSize: 18,
-        lineHeightMultiple: 1.8,
+        lineHeightMultiple: 1.5,
         cornerRadius: 0,
         contentInsets: NSEdgeInsets(top: 50, left: 80, bottom: 50, right: 80),
         useShadows: false,
@@ -91,11 +142,12 @@ extension ParchmentTheme {
         selectionColor: NSColor(calibratedRed: 0.20, green: 0.34, blue: 0.50, alpha: 0.5),
         cursorColor: NSColor(calibratedRed: 0.40, green: 0.68, blue: 1.0, alpha: 1.0),
         lineNumberColor: NSColor(calibratedWhite: 0.4, alpha: 1.0),
+        syntaxColors: .dark,
         bodyFontName: "-apple-system",
         headingFontName: "-apple-system",
         codeFontName: "SF Mono",
         baseFontSize: 16,
-        lineHeightMultiple: 1.7,
+        lineHeightMultiple: 1.4,
         cornerRadius: 0,
         contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
         useShadows: false,
@@ -115,6 +167,7 @@ extension ParchmentTheme {
         selectionColor: NSColor(calibratedRed: 0.90, green: 0.82, blue: 0.65, alpha: 0.4),
         cursorColor: NSColor(calibratedRed: 0.55, green: 0.35, blue: 0.20, alpha: 1.0),
         lineNumberColor: NSColor(calibratedRed: 0.60, green: 0.55, blue: 0.45, alpha: 1.0),
+        syntaxColors: .sepia,
         bodyFontName: "Baskerville",
         headingFontName: "Baskerville",
         codeFontName: "SF Mono",
@@ -139,11 +192,12 @@ extension ParchmentTheme {
         selectionColor: NSColor(calibratedRed: 1.0, green: 1.0, blue: 0.0, alpha: 0.5),
         cursorColor: NSColor.black,
         lineNumberColor: NSColor(calibratedWhite: 0.5, alpha: 1.0),
+        syntaxColors: .light,
         bodyFontName: "-apple-system",
         headingFontName: "-apple-system",
         codeFontName: "SF Mono",
         baseFontSize: 18,
-        lineHeightMultiple: 1.8,
+        lineHeightMultiple: 1.5,
         cornerRadius: 0,
         contentInsets: NSEdgeInsets(top: 40, left: 60, bottom: 40, right: 60),
         useShadows: false,
@@ -163,6 +217,30 @@ extension ParchmentTheme {
     static func theme(named name: String) -> ParchmentTheme? {
         return all.first { $0.name == name }
     }
+    
+    /// Get theme by index (for keyboard shortcuts)
+    static func theme(at index: Int) -> ParchmentTheme? {
+        guard index >= 0 && index < all.count else { return nil }
+        return all[index]
+    }
+    
+    /// Current theme (persisted in UserDefaults)
+    static var current: ParchmentTheme {
+        get {
+            let themeName = UserDefaults.standard.string(forKey: "selectedTheme") ?? "Minimal"
+            return theme(named: themeName) ?? .minimal
+        }
+        set {
+            UserDefaults.standard.set(newValue.name, forKey: "selectedTheme")
+            NotificationCenter.default.post(name: .themeDidChange, object: nil)
+        }
+    }
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    static let themeDidChange = Notification.Name("ParchmentThemeDidChange")
 }
 
 // MARK: - Theme Application

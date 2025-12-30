@@ -10,6 +10,29 @@ class TableOfContentsViewController: NSViewController {
     private var outlineView: NSOutlineView!
     private var headers: [MarkdownHeader] = []
     private var currentHighlight: MarkdownHeader?
+    private var currentTheme: ParchmentTheme = ParchmentTheme.current
+    
+    func applyTheme(_ theme: ParchmentTheme) {
+        self.currentTheme = theme
+        // Apply theme to table of contents
+        view.wantsLayer = true
+        view.layer?.backgroundColor = theme.backgroundColor.cgColor
+        
+        // Apply to outline view
+        outlineView?.backgroundColor = theme.backgroundColor
+        outlineView?.gridColor = theme.textColor.withAlphaComponent(0.1)
+        
+        // Apply to enclosing scroll view
+        outlineView?.enclosingScrollView?.backgroundColor = theme.backgroundColor
+        outlineView?.enclosingScrollView?.drawsBackground = true
+        
+        // Update row colors by reloading data
+        outlineView?.reloadData()
+        
+        // Force redraw
+        view.needsDisplay = true
+        outlineView?.needsDisplay = true
+    }
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 250, height: 600))
@@ -30,6 +53,11 @@ class TableOfContentsViewController: NSViewController {
         outlineView.autoresizesOutlineColumn = true
         outlineView.indentationPerLevel = 16.0
         outlineView.selectionHighlightStyle = .regular
+
+        // Accessibility
+        outlineView.setAccessibilityLabel("Table of Contents")
+        outlineView.setAccessibilityRole(.outline)
+        outlineView.setAccessibilityIdentifier("tableOfContents")
         
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("HeaderColumn"))
         column.isEditable = false
@@ -236,16 +264,20 @@ extension TableOfContentsViewController: NSOutlineViewDelegate {
         
         if let header = item as? MarkdownHeader {
             cellView?.textField?.stringValue = header.title
-            
+
             let fontSize = CGFloat(14 - min(2, header.level - 1))
             let weight: NSFont.Weight = header.level <= 2 ? .semibold : .regular
             cellView?.textField?.font = NSFont.systemFont(ofSize: fontSize, weight: weight)
-            
+
+            // Use theme colors
             if header == currentHighlight {
-                cellView?.textField?.textColor = NSColor.controlAccentColor
+                cellView?.textField?.textColor = currentTheme.linkColor
             } else {
-                cellView?.textField?.textColor = NSColor.labelColor
+                cellView?.textField?.textColor = currentTheme.textColor.withAlphaComponent(header.level == 1 ? 1.0 : 0.8)
             }
+
+            // Accessibility: Announce heading level
+            cellView?.setAccessibilityLabel("Heading level \(header.level): \(header.title)")
         }
         
         return cellView
