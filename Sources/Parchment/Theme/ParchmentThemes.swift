@@ -75,6 +75,19 @@ public struct ParchmentTheme {
     let contentInsets: NSEdgeInsets
     let useShadows: Bool
     let animationDuration: TimeInterval
+
+    /// Whether this is a dark theme (based on background brightness)
+    var isDark: Bool {
+        // Convert to grayscale to get brightness
+        guard let rgbColor = backgroundColor.usingColorSpace(.sRGB) else {
+            return false
+        }
+        // Luminance formula: 0.299*R + 0.587*G + 0.114*B
+        let luminance = 0.299 * rgbColor.redComponent +
+                        0.587 * rgbColor.greenComponent +
+                        0.114 * rgbColor.blueComponent
+        return luminance < 0.5
+    }
 }
 
 extension ParchmentTheme {

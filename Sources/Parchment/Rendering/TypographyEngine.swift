@@ -29,12 +29,12 @@ final class TypographyEngine {
             1.2,    // h5: 19pt
             1.0     // h6: 16pt
         ]
-        
+
         let scale = scales[min(level, 6)]
         let fontSize = theme.baseFontSize * scale * zoomLevel
-        
+
         // Use different weights for hierarchy
-        let weight: NSFont.Weight = {
+        let baseWeight: NSFont.Weight = {
             switch level {
             case 1: return .bold
             case 2: return .semibold
@@ -42,7 +42,10 @@ final class TypographyEngine {
             default: return .regular
             }
         }()
-        
+
+        // Apply optical weight adjustment for better visual balance
+        let weight = opticalWeight(baseWeight: baseWeight, pointSize: fontSize, isDark: theme.isDark)
+
         let font = createFont(
             name: theme.headingFontName,
             size: fontSize,
@@ -182,5 +185,34 @@ final class TypographyEngine {
         } else {
             return NSFont.systemFont(ofSize: size, weight: weight)
         }
+    }
+
+    /// Calculate optical font weight based on size and theme
+    /// Larger text appears heavier, so we reduce weight for large headings
+    /// Dark mode text can feel harsh, so we lighten slightly
+    private func opticalWeight(baseWeight: NSFont.Weight, pointSize: CGFloat, isDark: Bool) -> NSFont.Weight {
+        // Weight order for stepping: ultraLight, thin, light, regular, medium, semibold, bold, heavy, black
+        let weights: [NSFont.Weight] = [.ultraLight, .thin, .light, .regular, .medium, .semibold, .bold, .heavy, .black]
+
+        guard let baseIndex = weights.firstIndex(of: baseWeight) else {
+            return baseWeight
+        }
+
+        var adjustment = 0
+
+        // Larger text = lighter weight (reduces visual heaviness)
+        if pointSize > 32 {
+            adjustment -= 2  // Very large: reduce by 2 steps
+        } else if pointSize > 24 {
+            adjustment -= 1  // Large: reduce by 1 step
+        }
+
+        // Dark mode = slightly lighter (reduces eye strain)
+        if isDark {
+            adjustment -= 1
+        }
+
+        let newIndex = max(0, min(weights.count - 1, baseIndex + adjustment))
+        return weights[newIndex]
     }
 }
