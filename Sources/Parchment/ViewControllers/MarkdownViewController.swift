@@ -176,6 +176,43 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         }
     }
 
+    /// Set reading mode with centered, width-constrained text
+    func setReadingModeWidth(_ maxWidth: CGFloat?) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+
+            if let width = maxWidth {
+                // Center the text container with max width
+                textView.textContainerInset = NSSize(width: 0, height: 40)
+
+                // Calculate horizontal inset for centering
+                let viewWidth = scrollView.frame.width
+                let horizontalInset = max(60, (viewWidth - width) / 2)
+                textView.textContainerInset = NSSize(width: horizontalInset, height: 40)
+
+                // Ensure text container respects width
+                textView.textContainer?.size = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+            } else {
+                // Restore default insets
+                let theme = ParchmentTheme.current
+                textView.textContainerInset = NSSize(
+                    width: theme.contentInsets.left,
+                    height: theme.contentInsets.top
+                )
+
+                // Reset text container width
+                textView.textContainer?.size = NSSize(
+                    width: scrollView.frame.width - theme.contentInsets.left - theme.contentInsets.right,
+                    height: CGFloat.greatestFiniteMagnitude
+                )
+            }
+
+            textView.needsLayout = true
+            textView.needsDisplay = true
+        }
+    }
+
     func loadDocument(_ document: MarkdownDocument) {
         currentDocument = document
 

@@ -224,6 +224,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let focusModeItem = NSMenuItem(title: "Toggle Focus Mode", action: #selector(toggleFocusMode), keyEquivalent: "f")
         focusModeItem.keyEquivalentModifierMask = [.command, .shift]
         viewMenu.addItem(focusModeItem)
+
+        let readingModeItem = NSMenuItem(title: "Toggle Reading Mode", action: #selector(toggleReadingMode), keyEquivalent: "r")
+        readingModeItem.keyEquivalentModifierMask = [.command, .shift]
+        viewMenu.addItem(readingModeItem)
+
         viewMenu.addItem(NSMenuItem(title: "Toggle Table of Contents", action: #selector(toggleTOC), keyEquivalent: "t"))
         viewMenu.addItem(NSMenuItem(title: "Show Reading Statistics", action: #selector(showStatistics), keyEquivalent: "/"))
         viewMenu.addItem(NSMenuItem.separator())
@@ -472,7 +477,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleFocusMode() {
         windowController?.toggleFocusMode()
     }
-    
+
+    @objc private func toggleReadingMode() {
+        windowController?.toggleReadingMode()
+    }
+
     @objc private func toggleTOC() {
         windowController?.toggleTableOfContents()
     }

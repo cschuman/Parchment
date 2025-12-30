@@ -14,6 +14,12 @@ final class MainWindowController: NSWindowController {
     private var dropView: DropView?
     private let toolbarCoordinator = ToolbarCoordinator()
     private var exportCoordinator: ExportCoordinator?
+
+    // Reading Mode state
+    private var isReadingMode = false
+    private var savedToolbarVisible = true
+    private var savedStatusBarHidden = false
+    private var savedTOCHidden = true
     
     convenience init() {
         let window = NSWindow(
@@ -298,12 +304,77 @@ final class MainWindowController: NSWindowController {
     
     @objc func toggleStatusBar() {
         guard let statusBarView = statusBarView else { return }
-        
+
         // No animation - just toggle visibility instantly
         statusBarView.isHidden.toggle()
         contentStackView?.layoutSubtreeIfNeeded()
     }
-    
+
+    @objc func toggleReadingMode() {
+        isReadingMode.toggle()
+
+        if isReadingMode {
+            enterReadingMode()
+        } else {
+            exitReadingMode()
+        }
+    }
+
+    private func enterReadingMode() {
+        // Save current state
+        savedToolbarVisible = window?.toolbar?.isVisible ?? true
+        savedStatusBarHidden = statusBarView?.isHidden ?? false
+        savedTOCHidden = tocViewController?.view.isHidden ?? true
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+
+            // Hide all chrome
+            statusBarView?.animator().isHidden = true
+            tocViewController?.view.animator().isHidden = true
+            window?.toolbar?.isVisible = false
+
+            // Hide presentation options (dock, menu bar)
+            NSApp.presentationOptions = [.autoHideDock, .autoHideMenuBar]
+
+            contentStackView?.layoutSubtreeIfNeeded()
+        }
+
+        // Enter full screen if not already
+        if window?.styleMask.contains(.fullScreen) == false {
+            window?.toggleFullScreen(nil)
+        }
+
+        // Enable centered reading width
+        markdownViewController?.setReadingModeWidth(680)
+    }
+
+    private func exitReadingMode() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+
+            // Restore chrome
+            statusBarView?.animator().isHidden = savedStatusBarHidden
+            tocViewController?.view.animator().isHidden = savedTOCHidden
+            window?.toolbar?.isVisible = savedToolbarVisible
+
+            // Restore presentation options
+            NSApp.presentationOptions = []
+
+            contentStackView?.layoutSubtreeIfNeeded()
+        }
+
+        // Exit full screen if we're in it
+        if window?.styleMask.contains(.fullScreen) == true {
+            window?.toggleFullScreen(nil)
+        }
+
+        // Disable centered reading width
+        markdownViewController?.setReadingModeWidth(nil)
+    }
+
     func adjustZoom(delta: CGFloat) {
         markdownViewController?.adjustZoom(delta: delta)
     }
