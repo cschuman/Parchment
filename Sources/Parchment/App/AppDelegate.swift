@@ -327,17 +327,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func openDocument(at url: URL) {
-        
+
         guard FileManager.default.fileExists(atPath: url.path) else {
             showError("File not found: \(url.lastPathComponent)")
             return
         }
-        
-        
+
         if windowController == nil {
             windowController = MainWindowController()
         }
-        
+
         windowController?.showWindow(nil)
         windowController?.window?.makeKeyAndOrderFront(nil)
         if let wc = windowController {
@@ -346,8 +345,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             Logger.error("Window controller unexpectedly nil when opening document")
         }
         NSApp.activate(ignoringOtherApps: true)
-        
+
         addToRecentDocuments(url)
+
+        // Track document opens for reading position tip
+        OnboardingManager.shared.documentOpened()
     }
     
     @objc private func openDocument() {
@@ -483,6 +485,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         ParchmentTheme.current = theme
         windowController?.applyTheme(theme)
+
+        // Show auto-theme tip on first manual theme change
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            OnboardingManager.shared.showTip(.autoTheme, near: nil)
+        }
     }
 
     @objc private func toggleFollowSystemAppearance(_ sender: NSMenuItem) {

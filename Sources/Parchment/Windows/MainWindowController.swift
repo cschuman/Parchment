@@ -273,13 +273,22 @@ final class MainWindowController: NSWindowController {
     
     @objc func toggleTableOfContents() {
         guard let tocView = tocViewController?.view else { return }
-        
+
+        let wasHidden = tocView.isHidden
+
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.25
             context.allowsImplicitAnimation = true
-            
+
             tocView.isHidden.toggle()
             splitView?.layoutSubtreeIfNeeded()
+        }
+
+        // Show tip on first TOC open
+        if wasHidden && !tocView.isHidden {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                OnboardingManager.shared.showTip(.tocNavigation, near: tocView)
+            }
         }
     }
     
