@@ -261,6 +261,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         viewMenu.addItem(NSMenuItem(title: "Zoom In", action: #selector(zoomIn), keyEquivalent: "+"))
         viewMenu.addItem(NSMenuItem(title: "Zoom Out", action: #selector(zoomOut), keyEquivalent: "-"))
         viewMenu.addItem(NSMenuItem(title: "Actual Size", action: #selector(actualSize), keyEquivalent: "0"))
+        viewMenu.addItem(NSMenuItem.separator())
+
+        // Navigation submenu
+        let navigationItem = NSMenuItem(title: "Navigate", action: nil, keyEquivalent: "")
+        let navigationMenu = NSMenu(title: "Navigate")
+        navigationItem.submenu = navigationMenu
+
+        navigationMenu.addItem(NSMenuItem(title: "Next Header", action: #selector(jumpToNextHeader), keyEquivalent: "]"))
+        navigationMenu.addItem(NSMenuItem(title: "Previous Header", action: #selector(jumpToPreviousHeader), keyEquivalent: "["))
+        navigationMenu.addItem(NSMenuItem.separator())
+
+        let topItem = NSMenuItem(title: "Jump to Top", action: #selector(jumpToTop), keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!))
+        topItem.keyEquivalentModifierMask = [.command]
+        navigationMenu.addItem(topItem)
+
+        let bottomItem = NSMenuItem(title: "Jump to Bottom", action: #selector(jumpToBottom), keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!))
+        bottomItem.keyEquivalentModifierMask = [.command]
+        navigationMenu.addItem(bottomItem)
+
+        viewMenu.addItem(navigationItem)
     }
     
     private func showWelcomeWindow() {
@@ -500,7 +520,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleStatusBar() {
         windowController?.toggleStatusBar()
     }
-    
+
+    @objc private func jumpToNextHeader() {
+        windowController?.jumpToNextHeader()
+    }
+
+    @objc private func jumpToPreviousHeader() {
+        windowController?.jumpToPreviousHeader()
+    }
+
+    @objc private func jumpToTop() {
+        windowController?.jumpToTop()
+    }
+
+    @objc private func jumpToBottom() {
+        windowController?.jumpToBottom()
+    }
+
     @objc private func showFind() {
         windowController?.showFindBar()
     }

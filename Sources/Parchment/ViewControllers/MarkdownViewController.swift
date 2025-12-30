@@ -155,8 +155,27 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     internal func navigateToPreviousHeader() {
         navigationCoordinator?.navigateToPreviousHeader()
     }
-    
-    
+
+    func jumpToTop() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            scrollView.contentView.animator().setBoundsOrigin(.zero)
+        }
+    }
+
+    func jumpToBottom() {
+        guard let documentView = scrollView.documentView else { return }
+        let maxY = documentView.frame.height - scrollView.contentSize.height
+        let targetPoint = NSPoint(x: 0, y: max(0, maxY))
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            scrollView.contentView.animator().setBoundsOrigin(targetPoint)
+        }
+    }
+
     func loadDocument(_ document: MarkdownDocument) {
         currentDocument = document
 

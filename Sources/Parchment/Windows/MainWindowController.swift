@@ -298,9 +298,25 @@ final class MainWindowController: NSWindowController {
     func adjustZoom(delta: CGFloat) {
         markdownViewController?.adjustZoom(delta: delta)
     }
-    
+
     func resetZoom() {
         markdownViewController?.resetZoom()
+    }
+
+    func jumpToNextHeader() {
+        markdownViewController?.navigateToNextHeader()
+    }
+
+    func jumpToPreviousHeader() {
+        markdownViewController?.navigateToPreviousHeader()
+    }
+
+    func jumpToTop() {
+        markdownViewController?.jumpToTop()
+    }
+
+    func jumpToBottom() {
+        markdownViewController?.jumpToBottom()
     }
     
     func applyTheme(_ theme: ParchmentTheme) {
