@@ -235,6 +235,43 @@ extension ParchmentTheme {
             NotificationCenter.default.post(name: .themeDidChange, object: nil)
         }
     }
+
+    // MARK: - Auto Dark/Light Mode
+
+    /// Whether to follow system appearance (default: true)
+    static var followSystemAppearance: Bool {
+        get {
+            // Default to true if not set
+            if UserDefaults.standard.object(forKey: "followSystemAppearance") == nil {
+                return true
+            }
+            return UserDefaults.standard.bool(forKey: "followSystemAppearance")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "followSystemAppearance")
+        }
+    }
+
+    /// Theme to use for light system appearance
+    static let lightTheme: ParchmentTheme = .minimal
+
+    /// Theme to use for dark system appearance
+    static let darkTheme: ParchmentTheme = .midnight
+
+    /// Returns the appropriate theme for the current system appearance
+    static func themeForSystemAppearance() -> ParchmentTheme {
+        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        return isDark ? darkTheme : lightTheme
+    }
+
+    /// Apply theme with smooth cross-fade animation
+    static func applyThemeAnimated(_ theme: ParchmentTheme, duration: TimeInterval = 0.3) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.allowsImplicitAnimation = true
+            current = theme
+        }
+    }
 }
 
 // MARK: - Notifications

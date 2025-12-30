@@ -40,6 +40,46 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         registerForFileSystemEvents()
+
+        // Setup system appearance observation for auto dark/light mode
+        setupAppearanceObserver()
+
+        // Apply initial theme based on system appearance if following
+        if ParchmentTheme.followSystemAppearance {
+            let theme = ParchmentTheme.themeForSystemAppearance()
+            ParchmentTheme.current = theme
+            windowController?.applyTheme(theme)
+        }
+    }
+
+    private func setupAppearanceObserver() {
+        // Observe effective appearance changes
+        NSApp.addObserver(self, forKeyPath: "effectiveAppearance", options: [.new], context: nil)
+    }
+
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "effectiveAppearance" {
+            handleSystemAppearanceChange()
+        } else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
+        }
+    }
+
+    private func handleSystemAppearanceChange() {
+        guard ParchmentTheme.followSystemAppearance else { return }
+
+        let theme = ParchmentTheme.themeForSystemAppearance()
+
+        // Only switch if different from current theme
+        guard theme.name != ParchmentTheme.current.name else { return }
+
+        // Apply with smooth animation
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+            ParchmentTheme.current = theme
+            self.windowController?.applyTheme(theme)
+        }
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -202,6 +242,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             menuItem.tag = index
             themeMenu.addItem(menuItem)
         }
+
+        // Add separator and Follow System Appearance option
+        themeMenu.addItem(NSMenuItem.separator())
+        let followSystemItem = NSMenuItem(
+            title: "Follow System Appearance",
+            action: #selector(toggleFollowSystemAppearance(_:)),
+            keyEquivalent: ""
+        )
+        followSystemItem.state = ParchmentTheme.followSystemAppearance ? .on : .off
+        themeMenu.addItem(followSystemItem)
+
         viewMenu.addItem(themeItem)
         viewMenu.addItem(NSMenuItem.separator())
         
@@ -406,8 +457,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func selectTheme(_ sender: NSMenuItem) {
         guard let theme = ParchmentTheme.theme(at: sender.tag) else { return }
+
+        // Disable auto-follow when user manually selects a theme
+        ParchmentTheme.followSystemAppearance = false
+
         ParchmentTheme.current = theme
         windowController?.applyTheme(theme)
+    }
+
+    @objc private func toggleFollowSystemAppearance(_ sender: NSMenuItem) {
+        ParchmentTheme.followSystemAppearance = !ParchmentTheme.followSystemAppearance
+        sender.state = ParchmentTheme.followSystemAppearance ? .on : .off
+
+        // If turning on, immediately apply the appropriate theme
+        if ParchmentTheme.followSystemAppearance {
+            let theme = ParchmentTheme.themeForSystemAppearance()
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.3
+                context.allowsImplicitAnimation = true
+                ParchmentTheme.current = theme
+                self.windowController?.applyTheme(theme)
+            }
+        }
     }
     
     @objc private func showStatistics() {
