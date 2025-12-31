@@ -23,74 +23,74 @@ Parchment is **Preview.app for Markdown** - the definitive read-only markdown vi
 
 ---
 
-## Phase 1: "Make It Work" (Q1 2025)
+## Phase 1: "Make It Work" ✅ COMPLETE
 *Fix the broken, add the expected*
 
 ### Critical Fixes
-- [ ] Fix Focus Mode discovery (Cmd+Shift+F shortcut, add to menu)
-- [ ] Auto dark/light mode switching (follow system appearance)
-- [ ] Restore reading position on file reopen
-- [ ] Transform status bar (parse time → word count, reading time, progress %)
+- [x] Fix Focus Mode discovery (Cmd+Shift+F shortcut, add to menu)
+- [x] Auto dark/light mode switching (follow system appearance)
+- [x] Restore reading position on file reopen
+- [x] Transform status bar (parse time → word count, reading time, progress %)
 
 ### Table Stakes Features
-- [ ] LaTeX/Math rendering (KaTeX integration)
-- [ ] Mermaid diagram support
-- [ ] Complete GFM support (task lists, footnotes, emoji shortcodes)
+- [x] LaTeX/Math rendering (KaTeX integration)
+- [x] Mermaid diagram support
+- [x] Complete GFM support (task lists, footnotes, emoji shortcodes, strikethrough)
 
 ### UX Quick Wins
-- [ ] Keyboard navigation for headers (Cmd+[ previous, Cmd+] next)
-- [ ] Jump to top/bottom (Cmd+Up, Cmd+Down)
-- [ ] Contextual onboarding tooltips
+- [x] Keyboard navigation for headers (Cmd+[ previous, Cmd+] next)
+- [x] Jump to top/bottom (Cmd+Up, Cmd+Down)
+- [x] Contextual onboarding tooltips
 
 ---
 
-## Phase 2: "Make It Delightful" (Q2 2025)
+## Phase 2: "Make It Delightful" ✅ COMPLETE
 *The details that create love*
 
 ### Typography Excellence
-- [ ] Optical font weight adjustment (lighter weights at larger sizes)
-- [ ] Variable font support for heading scales
-- [ ] Baseline grid alignment (8pt)
-- [ ] Maximum line length constraint (680pt centered)
+- [x] Optical font weight adjustment (lighter weights at larger sizes)
+- [x] Variable font support for heading scales
+- [x] Baseline grid alignment (8pt)
+- [x] Maximum line length constraint (680pt centered)
 
 ### Reading Mode
-- [ ] Distraction-free mode (remove ALL chrome with single keystroke)
-- [ ] Reading progress indicator (subtle vertical bar)
-- [ ] Enhanced Focus Mode with typewriter scrolling
+- [x] Distraction-free mode (remove ALL chrome with single keystroke)
+- [x] Reading progress indicator (subtle vertical bar)
+- [x] Enhanced Focus Mode with typewriter scrolling
 
 ### Visual Polish
-- [ ] Smooth theme transitions (0.3s cross-fade)
-- [ ] Document loading animations
-- [ ] Link hover previews (show URL tooltip)
-- [ ] Scroll physics refinement
+- [x] Smooth theme transitions (0.3s cross-fade)
+- [x] Document loading animations
+- [x] Link hover previews (show URL tooltip)
+- [x] Scroll physics refinement
 
 ### Power User Features
-- [ ] Enhanced Find (regex support, headers-only option)
-- [ ] Export preview before saving
-- [ ] Three new themes (Dracula, Nord, Solarized)
+- [x] Enhanced Find (regex support, headers-only option)
+- [x] Export preview before saving
+- [x] Three new themes (Dracula, Nord, Solarized)
 
 ---
 
-## Phase 3: "Make It Essential" (Q3-Q4 2025)
+## Phase 3: "Make It Essential" ✅ COMPLETE
 *Integration and stickiness*
 
 ### Workflow Integration
-- [ ] CLI tool (`parchment file.md` from terminal)
-- [ ] VS Code extension ("Open in Parchment")
-- [ ] Alfred/Raycast integration
-- [ ] Homebrew distribution
+- [x] CLI tool (`parchment file.md` from terminal)
+- [ ] VS Code extension ("Open in Parchment") - *Future: separate project*
+- [x] Alfred/Raycast integration
+- [x] Homebrew distribution
 
 ### Customization
-- [ ] Custom CSS themes
-- [ ] User-defined keyboard shortcuts
-- [ ] Export templates (academic, GitHub, manuscript)
+- [x] Custom CSS themes
+- [x] User-defined keyboard shortcuts
+- [x] Export templates (academic, GitHub, manuscript)
 
 ### Platform Excellence
-- [ ] Touch Bar support
-- [ ] Handoff between devices
-- [ ] Stage Manager optimization
-- [ ] Shortcuts app actions
-- [ ] Spotlight content indexing
+- [x] Touch Bar support
+- [x] Handoff between devices
+- [x] Stage Manager optimization
+- [x] Shortcuts app actions
+- [x] Spotlight content indexing
 
 ---
 
@@ -167,3 +167,4 @@ Parchment is **Preview.app for Markdown** - the definitive read-only markdown vi
 *"The best markdown viewer is the one you forget you're using."*
 
 *Last updated: December 2024*
+*v2.0.0 Released: All phases complete*
