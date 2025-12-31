@@ -8,7 +8,7 @@ class Parchment < Formula
   desc "Beautiful native macOS markdown viewer with premium typography"
   homepage "https://github.com/cschuman/Parchment"
   url "https://github.com/cschuman/Parchment/archive/refs/tags/v2.0.0.tar.gz"
-  sha256 "PLACEHOLDER_SHA256_HASH_UPDATE_ON_RELEASE"
+  sha256 "b64ad8963eddb9a71ce6484405d37cbab7cc45632c7bcfe4c25e9a88a61850f0"
   license "MIT"
   head "https://github.com/cschuman/Parchment.git", branch: "main"
 

@@ -5,7 +5,7 @@
 
 cask "parchment" do
   version "2.0.0"
-  sha256 "PLACEHOLDER_SHA256_HASH_UPDATE_ON_RELEASE"
+  sha256 "d040d731f1e0870ff76ba3d975f1caf60cef1d1f69315a4bf71ff2625b2f04f9"
 
   url "https://github.com/cschuman/Parchment/releases/download/v#{version}/Parchment-v#{version}.zip"
   name "Parchment"
