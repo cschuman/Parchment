@@ -552,6 +552,82 @@ final class DocumentExporter {
 
         return footer
     }
+
+    // MARK: - Preview Generation
+
+    /// Generate HTML preview string for display in preview panel
+    /// - Parameters:
+    ///   - document: The markdown document to preview
+    ///   - options: Export options affecting rendering
+    /// - Returns: Complete HTML string ready for display
+    func generateHTMLPreview(document: MarkdownDocument, options: ExportOptions) -> String {
+        return renderToHTML(document: document, options: options)
+    }
+
+    /// Generate PDF data for preview display
+    /// - Parameters:
+    ///   - document: The markdown document to preview
+    ///   - options: Export options affecting rendering
+    /// - Returns: PDF data that can be loaded into a PDFView
+    /// - Throws: ExportError if rendering fails
+    func generatePDFPreview(document: MarkdownDocument, options: ExportOptions) async throws -> Data {
+        let html = renderToHTML(document: document, options: options)
+
+        guard let webView = webView else {
+            throw ExportError.renderingFailed
+        }
+
+        await MainActor.run {
+            webView.loadHTMLString(html, baseURL: nil)
+        }
+
+        // Wait for content to load
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        let pdfData = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+            DispatchQueue.main.async {
+                let config = WKPDFConfiguration()
+                config.rect = CGRect(
+                    x: 0,
+                    y: 0,
+                    width: options.paperSize.width,
+                    height: options.paperSize.height
+                )
+
+                webView.createPDF(configuration: config) { result in
+                    switch result {
+                    case .success(let data):
+                        continuation.resume(returning: data)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
+
+        return pdfData
+    }
+
+    /// Generate RTF attributed string for preview display
+    /// - Parameters:
+    ///   - document: The markdown document to preview
+    ///   - options: Export options affecting rendering
+    /// - Returns: Attributed string that can be displayed in an NSTextView
+    /// - Throws: ExportError if rendering fails
+    func generateRTFPreview(document: MarkdownDocument, options: ExportOptions) throws -> NSAttributedString {
+        let html = renderToHTML(document: document, options: options)
+
+        guard let htmlData = html.data(using: .utf8),
+              let attributedString = NSAttributedString(
+                html: htmlData,
+                options: [.documentType: NSAttributedString.DocumentType.html],
+                documentAttributes: nil
+              ) else {
+            throw ExportError.renderingFailed
+        }
+
+        return attributedString
+    }
 }
 
 struct ExportOptions {

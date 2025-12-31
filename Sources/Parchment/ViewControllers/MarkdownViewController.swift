@@ -523,15 +523,43 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
     // Old focus mode implementation removed - now using EnhancedFocusMode
     
     // MARK: - Typewriter Scrolling
-    
+
     internal func enableTypewriterScrolling() {
         typewriterManager?.enable()
         typewriterScrollingEnabled = true
     }
-    
+
     internal func disableTypewriterScrolling() {
         typewriterManager?.disable()
         typewriterScrollingEnabled = false
+    }
+
+    // MARK: - Reading Progress Visibility
+
+    /// Returns true if the reading progress indicator is currently hidden
+    var isReadingProgressHidden: Bool {
+        return readingProgressView?.isHidden ?? true
+    }
+
+    /// Show or hide the reading progress indicator with optional animation
+    func setReadingProgressHidden(_ hidden: Bool, animated: Bool) {
+        guard let progressView = readingProgressView else { return }
+
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.25
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                progressView.animator().alphaValue = hidden ? 0 : 1
+            } completionHandler: {
+                progressView.isHidden = hidden
+                if !hidden {
+                    progressView.alphaValue = 1
+                }
+            }
+        } else {
+            progressView.isHidden = hidden
+            progressView.alphaValue = hidden ? 0 : 1
+        }
     }
     
     func showReadingStatistics() {

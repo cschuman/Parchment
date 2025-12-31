@@ -6,6 +6,8 @@ final class ExportCoordinator {
 
     private let documentExporter = DocumentExporter()
     private weak var window: NSWindow?
+    private var previewController: ExportPreviewController?
+    private var currentDocument: MarkdownDocument?
 
     init(window: NSWindow?) {
         self.window = window
@@ -15,7 +17,19 @@ final class ExportCoordinator {
         self.window = window
     }
 
+    /// Export document with preview - shows preview panel first, then proceeds to save
     func exportDocument(_ document: MarkdownDocument, format: DocumentExporter.ExportFormat) {
+        // For formats that support preview, show preview first
+        if supportsPreview(format) {
+            showExportPreview(document: document, format: format)
+        } else {
+            // For formats without preview support (DOCX, plain text), go directly to save
+            exportDirectly(document, format: format)
+        }
+    }
+
+    /// Export without preview - for backwards compatibility or programmatic export
+    func exportDirectly(_ document: MarkdownDocument, format: DocumentExporter.ExportFormat) {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = contentTypes(for: format)
         savePanel.canCreateDirectories = true
@@ -45,6 +59,33 @@ final class ExportCoordinator {
                 }
             }
         }
+    }
+
+    // MARK: - Preview Support
+
+    private func supportsPreview(_ format: DocumentExporter.ExportFormat) -> Bool {
+        switch format {
+        case .pdf, .html, .rtf:
+            return true
+        case .docx, .plainText:
+            return false
+        }
+    }
+
+    private func showExportPreview(document: MarkdownDocument, format: DocumentExporter.ExportFormat) {
+        guard let window = window else {
+            showError("No window available for export preview")
+            return
+        }
+
+        currentDocument = document
+        previewController = ExportPreviewController(document: document, exporter: documentExporter)
+        previewController?.delegate = self
+        previewController?.setInitialFormat(format)
+
+        guard let previewVC = previewController else { return }
+
+        window.contentViewController?.presentAsSheet(previewVC)
     }
 
     // MARK: - Private
@@ -114,5 +155,64 @@ final class ExportCoordinator {
 
     private func showError(_ message: String) {
         AlertHelper.showError(message, in: window)
+    }
+
+    private func dismissPreview() {
+        if let previewVC = previewController {
+            previewVC.dismiss(nil)
+        }
+        previewController = nil
+        currentDocument = nil
+    }
+
+    private func proceedWithExport(document: MarkdownDocument, format: DocumentExporter.ExportFormat, options: ExportOptions) {
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = contentTypes(for: format)
+        savePanel.canCreateDirectories = true
+        savePanel.nameFieldStringValue = (document.url?.deletingPathExtension().lastPathComponent ?? "Untitled") + fileExtension(for: format)
+
+        guard let window = window else {
+            showError("No window available for export")
+            return
+        }
+
+        savePanel.beginSheetModal(for: window) { [weak self] response in
+            guard let self = self, response == .OK, let url = savePanel.url else { return }
+
+            Task { [weak self] in
+                guard let self = self else { return }
+                do {
+                    try await self.documentExporter.export(document: document, to: format, at: url, options: options)
+
+                    await MainActor.run { [weak self] in
+                        self?.showExportSuccess(url: url)
+                    }
+                } catch {
+                    await MainActor.run { [weak self] in
+                        self?.showError("Export failed: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - ExportPreviewDelegate
+
+extension ExportCoordinator: ExportPreviewDelegate {
+
+    func exportPreviewDidConfirm(_ controller: ExportPreviewController, format: DocumentExporter.ExportFormat, options: ExportOptions) {
+        guard let document = currentDocument else {
+            dismissPreview()
+            showError("No document available for export")
+            return
+        }
+
+        dismissPreview()
+        proceedWithExport(document: document, format: format, options: options)
+    }
+
+    func exportPreviewDidCancel(_ controller: ExportPreviewController) {
+        dismissPreview()
     }
 }

@@ -2,7 +2,7 @@ import Cocoa
 
 /// Custom NSTextView for markdown display with enhanced keyboard handling
 public class MarkdownTextView: NSTextView {
-    
+
     override public func performKeyEquivalent(with event: NSEvent) -> Bool {
         // Handle Cmd+C for copying with proper plain text support
         if event.modifierFlags.contains(.command) {
@@ -21,5 +21,17 @@ public class MarkdownTextView: NSTextView {
             }
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    override public func keyDown(with event: NSEvent) {
+        // Handle Escape key to exit distraction-free mode
+        if event.keyCode == 53 { // Escape key
+            if let windowController = window?.windowController as? MainWindowController {
+                if windowController.handleEscapeKey() {
+                    return
+                }
+            }
+        }
+        super.keyDown(with: event)
     }
 }

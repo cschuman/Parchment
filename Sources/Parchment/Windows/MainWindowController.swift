@@ -34,6 +34,14 @@ final class MainWindowController: NSWindowController {
     private var savedToolbarVisible = true
     private var savedStatusBarHidden = false
     private var savedTOCHidden = true
+
+    // Distraction-Free Mode state
+    private var isDistractionFreeMode = false
+    private var savedDistractionFreeToolbarVisible = true
+    private var savedDistractionFreeStatusBarHidden = false
+    private var savedDistractionFreeTOCHidden = true
+    private var savedDistractionFreeProgressHidden = false
+    private var savedDistractionFreeWindowStyleMask: NSWindow.StyleMask = []
     
     convenience init() {
         let window = NSWindow(
@@ -399,6 +407,147 @@ final class MainWindowController: NSWindowController {
         markdownViewController?.setReadingModeWidth(nil)
     }
 
+    // MARK: - Distraction-Free Mode
+
+    @objc func toggleDistractionFreeMode() {
+        isDistractionFreeMode.toggle()
+
+        if isDistractionFreeMode {
+            enterDistractionFreeMode()
+        } else {
+            exitDistractionFreeMode()
+        }
+    }
+
+    /// Returns true if distraction-free mode is currently active
+    var distractionFreeModeEnabled: Bool {
+        return isDistractionFreeMode
+    }
+
+    private func enterDistractionFreeMode() {
+        // Save current state
+        savedDistractionFreeToolbarVisible = window?.toolbar?.isVisible ?? true
+        savedDistractionFreeStatusBarHidden = statusBarView?.isHidden ?? false
+        savedDistractionFreeTOCHidden = tocViewController?.view.isHidden ?? true
+        savedDistractionFreeProgressHidden = markdownViewController?.isReadingProgressHidden ?? false
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.35
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            context.allowsImplicitAnimation = true
+
+            // Hide all chrome with fade
+            statusBarView?.animator().alphaValue = 0
+            tocViewController?.view.animator().alphaValue = 0
+            window?.toolbar?.isVisible = false
+
+            // Hide reading progress indicator
+            markdownViewController?.setReadingProgressHidden(true, animated: false)
+
+            contentStackView?.layoutSubtreeIfNeeded()
+        } completionHandler: { [weak self] in
+            // Actually hide views after fade completes
+            self?.statusBarView?.isHidden = true
+            self?.tocViewController?.view.isHidden = true
+            self?.statusBarView?.alphaValue = 1
+            self?.tocViewController?.view.alphaValue = 1
+        }
+
+        // Hide dock and menu bar
+        NSApp.presentationOptions = [.autoHideDock, .autoHideMenuBar]
+
+        // Make title bar fully transparent
+        window?.titlebarAppearsTransparent = true
+        window?.titleVisibility = .hidden
+        window?.styleMask.insert(.fullSizeContentView)
+
+        // Enter full screen if not already
+        if window?.styleMask.contains(.fullScreen) == false {
+            window?.toggleFullScreen(nil)
+        }
+
+        // Enable centered reading width for optimal focus
+        markdownViewController?.setReadingModeWidth(680)
+
+        // Show mode indicator
+        showDistractionFreeModeIndicator(entering: true)
+    }
+
+    private func exitDistractionFreeMode() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.35
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            context.allowsImplicitAnimation = true
+
+            // Prepare views for fade in
+            statusBarView?.alphaValue = 0
+            tocViewController?.view.alphaValue = 0
+
+            // Restore visibility
+            statusBarView?.isHidden = savedDistractionFreeStatusBarHidden
+            tocViewController?.view.isHidden = savedDistractionFreeTOCHidden
+            window?.toolbar?.isVisible = savedDistractionFreeToolbarVisible
+
+            // Fade in
+            statusBarView?.animator().alphaValue = 1
+            tocViewController?.view.animator().alphaValue = 1
+
+            // Restore reading progress indicator
+            markdownViewController?.setReadingProgressHidden(savedDistractionFreeProgressHidden, animated: false)
+
+            // Restore presentation options
+            NSApp.presentationOptions = []
+
+            contentStackView?.layoutSubtreeIfNeeded()
+        }
+
+        // Exit full screen if we're in it
+        if window?.styleMask.contains(.fullScreen) == true {
+            window?.toggleFullScreen(nil)
+        }
+
+        // Disable centered reading width
+        markdownViewController?.setReadingModeWidth(nil)
+
+        // Show mode indicator
+        showDistractionFreeModeIndicator(entering: false)
+    }
+
+    private func showDistractionFreeModeIndicator(entering: Bool) {
+        guard let contentView = window?.contentView else { return }
+
+        let indicator = ModeIndicatorView(frame: NSRect(x: 0, y: 0, width: 200, height: 100))
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(indicator)
+
+        NSLayoutConstraint.activate([
+            indicator.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            indicator.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            indicator.widthAnchor.constraint(equalToConstant: 200),
+            indicator.heightAnchor.constraint(equalToConstant: 100)
+        ])
+
+        if entering {
+            indicator.showMode("Distraction Free", subtitle: "Press Esc or Cmd+Shift+D to exit")
+        } else {
+            indicator.showMode("Normal View", subtitle: nil)
+        }
+
+        // Remove indicator after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+            indicator.removeFromSuperview()
+        }
+    }
+
+    /// Handle Escape key to exit distraction-free mode
+    func handleEscapeKey() -> Bool {
+        if isDistractionFreeMode {
+            toggleDistractionFreeMode()
+            return true
+        }
+        return false
+    }
+
     func adjustZoom(delta: CGFloat) {
         markdownViewController?.adjustZoom(delta: delta)
     }
@@ -459,6 +608,15 @@ final class MainWindowController: NSWindowController {
     }
     
     func exportDocument(format: DocumentExporter.ExportFormat) {
+        guard let document = currentDocument else {
+            showError("No document to export")
+            return
+        }
+        exportCoordinator?.exportDirectly(document, format: format)
+    }
+
+    /// Export document with preview panel - shows preview before saving
+    func exportDocumentWithPreview(format: DocumentExporter.ExportFormat) {
         guard let document = currentDocument else {
             showError("No document to export")
             return

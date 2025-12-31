@@ -150,7 +150,7 @@ final class ModeIndicatorView: NSView {
     private func iconForMode(_ mode: String) -> NSImage? {
         // Create simple icons for each mode
         let config = NSImage.SymbolConfiguration(pointSize: 24, weight: .medium)
-        
+
         switch mode.lowercased() {
         case "focus mode":
             return NSImage(systemSymbolName: "eye", accessibilityDescription: nil)?
@@ -170,8 +170,11 @@ final class ModeIndicatorView: NSView {
         case "dyslexic mode":
             return NSImage(systemSymbolName: "character.book.closed", accessibilityDescription: nil)?
                 .withSymbolConfiguration(config)
-        case "normal":
+        case "normal", "normal view":
             return NSImage(systemSymbolName: "text.alignleft", accessibilityDescription: nil)?
+                .withSymbolConfiguration(config)
+        case "distraction free":
+            return NSImage(systemSymbolName: "rectangle.dashed", accessibilityDescription: nil)?
                 .withSymbolConfiguration(config)
         default:
             return NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)?

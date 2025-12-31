@@ -234,8 +234,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(openRecentItem)
         updateOpenRecentMenu(openRecentMenu)
         fileMenu.addItem(NSMenuItem.separator())
-        fileMenu.addItem(NSMenuItem(title: "Export as PDF...", action: #selector(exportAsPDF), keyEquivalent: "e"))
-        fileMenu.addItem(NSMenuItem(title: "Export as HTML...", action: #selector(exportAsHTML), keyEquivalent: ""))
+
+        // Export submenu
+        let exportItem = NSMenuItem(title: "Export", action: nil, keyEquivalent: "")
+        let exportMenu = NSMenu(title: "Export")
+        exportItem.submenu = exportMenu
+
+        let exportPreviewItem = NSMenuItem(title: "Export with Preview...", action: #selector(exportWithPreview), keyEquivalent: "e")
+        exportPreviewItem.keyEquivalentModifierMask = [.command, .shift]
+        exportMenu.addItem(exportPreviewItem)
+
+        exportMenu.addItem(NSMenuItem.separator())
+        exportMenu.addItem(NSMenuItem(title: "Export as PDF...", action: #selector(exportAsPDF), keyEquivalent: "e"))
+        exportMenu.addItem(NSMenuItem(title: "Export as HTML...", action: #selector(exportAsHTML), keyEquivalent: ""))
+        exportMenu.addItem(NSMenuItem(title: "Export as RTF...", action: #selector(exportAsRTF), keyEquivalent: ""))
+
+        fileMenu.addItem(exportItem)
         fileMenu.addItem(NSMenuItem.separator())
         fileMenu.addItem(NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
         
@@ -264,6 +278,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         readingModeItem.keyEquivalentModifierMask = [.command, .shift]
         viewMenu.addItem(readingModeItem)
 
+        let distractionFreeItem = NSMenuItem(title: "Distraction-Free Mode", action: #selector(toggleDistractionFreeMode), keyEquivalent: "d")
+        distractionFreeItem.keyEquivalentModifierMask = [.command, .shift]
+        viewMenu.addItem(distractionFreeItem)
+
+        viewMenu.addItem(NSMenuItem.separator())
         viewMenu.addItem(NSMenuItem(title: "Toggle Table of Contents", action: #selector(toggleTOC), keyEquivalent: "t"))
         viewMenu.addItem(NSMenuItem(title: "Show Reading Statistics", action: #selector(showStatistics), keyEquivalent: "/"))
         viewMenu.addItem(NSMenuItem.separator())
@@ -517,6 +536,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         windowController?.toggleReadingMode()
     }
 
+    @objc private func toggleDistractionFreeMode() {
+        windowController?.toggleDistractionFreeMode()
+    }
+
     @objc private func toggleTOC() {
         windowController?.toggleTableOfContents()
     }
@@ -600,12 +623,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         windowController?.findPrevious()
     }
     
+    @objc private func exportWithPreview() {
+        windowController?.exportDocumentWithPreview(format: .pdf)
+    }
+
     @objc private func exportAsPDF() {
         windowController?.exportDocument(format: .pdf)
     }
-    
+
     @objc private func exportAsHTML() {
         windowController?.exportDocument(format: .html)
+    }
+
+    @objc private func exportAsRTF() {
+        windowController?.exportDocument(format: .rtf)
     }
     
     private func registerForFileSystemEvents() {
