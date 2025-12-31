@@ -128,5 +128,10 @@
             </array>
         </dict>
     </array>
+
+    <key>NSUserActivityTypes</key>
+    <array>
+        <string>com.parchment.viewing</string>
+    </array>
 </dict>
 </plist>

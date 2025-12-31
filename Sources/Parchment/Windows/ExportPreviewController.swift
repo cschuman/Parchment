@@ -34,6 +34,7 @@ final class ExportPreviewController: NSViewController {
     private var optionsContainer: NSStackView!
 
     // Options controls
+    private var templateSelector: NSPopUpButton!
     private var includeHeaderCheckbox: NSButton!
     private var includeFooterCheckbox: NSButton!
     private var themeSelector: NSPopUpButton!
@@ -136,6 +137,23 @@ final class ExportPreviewController: NSViewController {
     }
 
     private func setupOptionsControls() {
+        // Template selector
+        let templateLabel = NSTextField(labelWithString: "Template:")
+        templateSelector = NSPopUpButton()
+        templateSelector.addItems(withTitles: ExportTemplate.all.map { $0.name })
+        templateSelector.selectItem(at: 0)  // Standard template
+        templateSelector.target = self
+        templateSelector.action = #selector(templateChanged(_:))
+
+        // Add tooltips for template descriptions
+        for (index, template) in ExportTemplate.all.enumerated() {
+            templateSelector.item(at: index)?.toolTip = template.description
+        }
+
+        let templateStack = NSStackView(views: [templateLabel, templateSelector])
+        templateStack.orientation = .horizontal
+        templateStack.spacing = 8
+
         // Include header checkbox
         includeHeaderCheckbox = NSButton(checkboxWithTitle: "Include header", target: self, action: #selector(optionsChanged(_:)))
         includeHeaderCheckbox.state = exportOptions.includeHeader ? .on : .off
@@ -156,9 +174,24 @@ final class ExportPreviewController: NSViewController {
         themeStack.orientation = .horizontal
         themeStack.spacing = 8
 
+        optionsContainer.addArrangedSubview(templateStack)
         optionsContainer.addArrangedSubview(includeHeaderCheckbox)
         optionsContainer.addArrangedSubview(includeFooterCheckbox)
         optionsContainer.addArrangedSubview(themeStack)
+    }
+
+    @objc private func templateChanged(_ sender: NSPopUpButton) {
+        let selectedIndex = sender.indexOfSelectedItem
+        guard selectedIndex >= 0 && selectedIndex < ExportTemplate.all.count else { return }
+
+        let template = ExportTemplate.all[selectedIndex]
+        exportOptions.applyTemplate(template)
+
+        // Update UI controls to reflect template settings
+        includeHeaderCheckbox.state = exportOptions.includeHeader ? .on : .off
+        includeFooterCheckbox.state = exportOptions.includeFooter ? .on : .off
+
+        updatePreview()
     }
 
     private func setupPreviewViews() {

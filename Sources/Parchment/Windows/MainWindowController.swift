@@ -27,6 +27,9 @@ final class MainWindowController: NSWindowController {
         // Clean up file watcher to release dispatch source and file descriptor
         fileWatcher?.stop()
         fileWatcher = nil
+
+        // Remove Stage Manager notification observers
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     // Reading Mode state
@@ -42,26 +45,172 @@ final class MainWindowController: NSWindowController {
     private var savedDistractionFreeTOCHidden = true
     private var savedDistractionFreeProgressHidden = false
     private var savedDistractionFreeWindowStyleMask: NSWindow.StyleMask = []
+
+    // Stage Manager state (macOS 13.0+)
+    private var savedWindowFrame: NSRect = .zero
+    private var isTransitioningFullScreen = false
+
+    // MARK: - Window Size Constants for Stage Manager
+
+    /// Minimum window size - ensures readable content in Stage Manager tiles
+    private static let minimumWindowSize = NSSize(width: 400, height: 300)
+
+    /// Maximum window size - allows full screen usage while respecting Stage Manager
+    private static let maximumWindowSize = NSSize(width: 3840, height: 2160)
+
+    /// Default window size - optimized for Stage Manager default tile sizes
+    private static let defaultWindowSize = NSSize(width: 1200, height: 800)
+
+    /// Preferred aspect ratio for Stage Manager (approximately 3:2)
+    private static let preferredAspectRatio = NSSize(width: 3, height: 2)
     
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
+            contentRect: NSRect(origin: .zero, size: MainWindowController.defaultWindowSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        
+
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.center()
-        window.collectionBehavior = [.fullScreenPrimary, .managed]
-        
+
+        // Configure window size constraints for Stage Manager optimization
+        window.minSize = MainWindowController.minimumWindowSize
+        window.maxSize = MainWindowController.maximumWindowSize
+
+        // Configure collection behavior for Stage Manager support
+        // - fullScreenPrimary: Can enter full screen mode
+        // - fullScreenAuxiliary: Can be grouped with other windows in Stage Manager
+        // - managed: Participates in window management features
+        // - participatesInCycle: Included in Cmd+` window cycling
+        window.collectionBehavior = [
+            .fullScreenPrimary,
+            .fullScreenAuxiliary,
+            .managed,
+            .participatesInCycle
+        ]
+
+        // Enable window tiling for Stage Manager (macOS 13.0+)
+        if #available(macOS 13.0, *) {
+            // Configure tabbing mode for document-style window management
+            window.tabbingMode = .preferred
+        }
+
+        // Enable window restoration
+        window.isRestorable = true
+        window.restorationClass = WindowRestoration.self
+
         self.init(window: window)
         toolbarCoordinator.actionDelegate = self
         exportCoordinator = ExportCoordinator(window: window)
         window.toolbar = toolbarCoordinator.createToolbar()
         window.delegate = self
+
         setupViews()
+        setupStageManagerObservers()
+    }
+
+    // MARK: - Stage Manager Configuration
+
+    /// Sets up observers for Stage Manager state changes (macOS 13.0+)
+    private func setupStageManagerObservers() {
+        // Observe active space changes which occur during Stage Manager transitions
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(activeSpaceDidChange(_:)),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil
+        )
+
+        // Observe screen configuration changes (external display connect/disconnect)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screensDidChange(_:)),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+
+    @objc private func activeSpaceDidChange(_ notification: Notification) {
+        // When Stage Manager switches spaces, ensure window frame is appropriate
+        guard let window = window, !isTransitioningFullScreen else { return }
+
+        // Validate window is still on screen after space change
+        DispatchQueue.main.async { [weak self] in
+            self?.ensureWindowOnScreen(window)
+        }
+    }
+
+    @objc private func screensDidChange(_ notification: Notification) {
+        // Handle display configuration changes that affect Stage Manager
+        guard let window = window else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.ensureWindowOnScreen(window)
+        }
+    }
+
+    /// Ensures the window remains visible on the current screen
+    private func ensureWindowOnScreen(_ window: NSWindow) {
+        guard let screen = window.screen ?? NSScreen.main else { return }
+
+        let visibleFrame = screen.visibleFrame
+        var windowFrame = window.frame
+
+        // Check if window is mostly off-screen
+        let intersection = windowFrame.intersection(visibleFrame)
+        let visibleArea = intersection.width * intersection.height
+        let totalArea = windowFrame.width * windowFrame.height
+
+        // If less than 50% visible, reposition window
+        if totalArea > 0 && visibleArea / totalArea < 0.5 {
+            // Center window on current screen while maintaining size
+            let newOrigin = NSPoint(
+                x: visibleFrame.midX - windowFrame.width / 2,
+                y: visibleFrame.midY - windowFrame.height / 2
+            )
+            windowFrame.origin = newOrigin
+            window.setFrame(windowFrame, display: true, animate: true)
+        }
+    }
+
+    /// Returns optimal window size for current Stage Manager configuration
+    func optimalWindowSizeForStageManager() -> NSSize {
+        guard let screen = window?.screen ?? NSScreen.main else {
+            return MainWindowController.defaultWindowSize
+        }
+
+        let visibleFrame = screen.visibleFrame
+
+        // For Stage Manager, prefer a size that fits well in tile arrangements
+        // Typically 2/3 of screen width and 3/4 of screen height works well
+        let optimalWidth = min(visibleFrame.width * 0.67, 1400)
+        let optimalHeight = min(visibleFrame.height * 0.75, 900)
+
+        return NSSize(
+            width: max(optimalWidth, MainWindowController.minimumWindowSize.width),
+            height: max(optimalHeight, MainWindowController.minimumWindowSize.height)
+        )
+    }
+
+    /// Resizes window to optimal Stage Manager dimensions
+    func resizeForStageManager() {
+        guard let window = window else { return }
+
+        let optimalSize = optimalWindowSizeForStageManager()
+        var frame = window.frame
+
+        // Maintain center position while resizing
+        let centerX = frame.midX
+        let centerY = frame.midY
+
+        frame.size = optimalSize
+        frame.origin.x = centerX - optimalSize.width / 2
+        frame.origin.y = centerY - optimalSize.height / 2
+
+        window.setFrame(frame, display: true, animate: true)
     }
     
     private func setupViews() {
@@ -571,7 +720,13 @@ final class MainWindowController: NSWindowController {
     func jumpToBottom() {
         markdownViewController?.jumpToBottom()
     }
-    
+
+    /// Restores scroll position from Handoff
+    /// - Parameter percentage: Scroll percentage (0.0 to 1.0)
+    func restoreScrollPosition(_ percentage: Double) {
+        markdownViewController?.restoreScrollPositionFromHandoff(percentage)
+    }
+
     func applyTheme(_ theme: ParchmentTheme) {
         // Apply theme to window background
         window?.backgroundColor = theme.backgroundColor
@@ -692,23 +847,132 @@ extension MainWindowController {
 // MARK: - Window Delegate
 
 extension MainWindowController: NSWindowDelegate {
+
+    // MARK: - Full Screen Transitions (Stage Manager Aware)
+
     func windowWillEnterFullScreen(_ notification: Notification) {
+        isTransitioningFullScreen = true
+
+        // Save window frame for restoration after exiting full screen
+        if let window = window {
+            savedWindowFrame = window.frame
+        }
+
         // Ensure proper responder chain
         window?.makeFirstResponder(markdownViewController?.textView)
     }
-    
+
     func windowDidEnterFullScreen(_ notification: Notification) {
+        isTransitioningFullScreen = false
+
         // Re-establish first responder after full-screen transition
         DispatchQueue.main.async { [weak self] in
             self?.window?.makeFirstResponder(self?.markdownViewController?.textView)
         }
     }
-    
+
+    func windowWillExitFullScreen(_ notification: Notification) {
+        isTransitioningFullScreen = true
+    }
+
     func windowDidExitFullScreen(_ notification: Notification) {
+        isTransitioningFullScreen = false
+
         // Restore first responder after exiting full-screen
         DispatchQueue.main.async { [weak self] in
-            self?.window?.makeFirstResponder(self?.markdownViewController?.textView)
+            guard let self = self, let window = self.window else { return }
+
+            self.window?.makeFirstResponder(self.markdownViewController?.textView)
+
+            // Restore saved window frame if valid
+            if self.savedWindowFrame != .zero {
+                // Ensure the saved frame is still valid for current screen configuration
+                if let screen = window.screen ?? NSScreen.main {
+                    let visibleFrame = screen.visibleFrame
+                    var restoredFrame = self.savedWindowFrame
+
+                    // Adjust if saved frame is now off-screen
+                    if !visibleFrame.intersects(restoredFrame) {
+                        restoredFrame.origin.x = visibleFrame.midX - restoredFrame.width / 2
+                        restoredFrame.origin.y = visibleFrame.midY - restoredFrame.height / 2
+                    }
+
+                    window.setFrame(restoredFrame, display: true, animate: true)
+                }
+            }
         }
+    }
+
+    // MARK: - Window Resize (Stage Manager Support)
+
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        // Enforce minimum and maximum sizes for Stage Manager compatibility
+        var adjustedSize = frameSize
+
+        adjustedSize.width = max(adjustedSize.width, MainWindowController.minimumWindowSize.width)
+        adjustedSize.height = max(adjustedSize.height, MainWindowController.minimumWindowSize.height)
+        adjustedSize.width = min(adjustedSize.width, MainWindowController.maximumWindowSize.width)
+        adjustedSize.height = min(adjustedSize.height, MainWindowController.maximumWindowSize.height)
+
+        return adjustedSize
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        // Notify views of resize for layout optimization
+        contentStackView?.layoutSubtreeIfNeeded()
+    }
+
+    // MARK: - Window State Restoration
+
+    func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
+        // Encode current document URL for restoration
+        if let documentURL = currentDocument?.url {
+            state.encode(documentURL.absoluteString, forKey: "documentURL")
+        }
+
+        // Encode window frame
+        state.encode(NSStringFromRect(window.frame), forKey: "windowFrame")
+
+        // Encode UI state
+        state.encode(tocViewController?.view.isHidden ?? true, forKey: "tocHidden")
+        state.encode(statusBarView?.isHidden ?? false, forKey: "statusBarHidden")
+    }
+
+    func window(_ window: NSWindow, didDecodeRestorableState state: NSCoder) {
+        // Restore document if URL was saved
+        if let urlString = state.decodeObject(forKey: "documentURL") as? String,
+           let documentURL = URL(string: urlString),
+           FileManager.default.fileExists(atPath: documentURL.path) {
+            DispatchQueue.main.async { [weak self] in
+                self?.loadDocument(at: documentURL)
+            }
+        }
+
+        // Restore window frame
+        if let frameString = state.decodeObject(forKey: "windowFrame") as? String {
+            let savedFrame = NSRectFromString(frameString)
+            if savedFrame != .zero {
+                // Validate frame is still on screen
+                if let screen = window.screen ?? NSScreen.main {
+                    let visibleFrame = screen.visibleFrame
+                    if visibleFrame.intersects(savedFrame) {
+                        window.setFrame(savedFrame, display: false)
+                    }
+                }
+            }
+        }
+
+        // Restore UI state
+        tocViewController?.view.isHidden = state.decodeBool(forKey: "tocHidden")
+        statusBarView?.isHidden = state.decodeBool(forKey: "statusBarHidden")
+    }
+
+    // MARK: - Window Move (Stage Manager Awareness)
+
+    func windowDidMove(_ notification: Notification) {
+        // Track window position for Stage Manager persistence
+        guard let window = window, !isTransitioningFullScreen else { return }
+        savedWindowFrame = window.frame
     }
 }
 

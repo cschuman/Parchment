@@ -18,6 +18,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupMenuBar()
         setupEnhancedMenus()  // Add enhanced menus for new features
+        applyCustomShortcuts()  // Apply user-configured keyboard shortcuts
+
+        // Register for shortcut change notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShortcutsChanged),
+            name: .shortcutsChanged,
+            object: nil
+        )
 
         // Setup recent documents callback
         recentDocumentsManager.onDocumentsChanged = { [weak self] in
@@ -76,9 +85,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         openDocument(at: url)
     }
 
-    // Handle Spotlight search result clicks
+    // Handle Spotlight search result clicks and Handoff activities
     func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([NSUserActivityRestoring]) -> Void) -> Bool {
-        return SpotlightSearchHandler.shared.handleSearchResult(userActivity: userActivity)
+        // First, check if it's a Spotlight search result
+        if SpotlightSearchHandler.shared.handleSearchResult(userActivity: userActivity) {
+            return true
+        }
+
+        // Then, check if it's a Handoff activity
+        if let handoffData = HandoffManager.shared.handleIncomingActivity(userActivity) {
+            handleHandoffData(handoffData)
+            return true
+        }
+
+        return false
+    }
+
+    /// Handles incoming Handoff data by opening the document and restoring state
+    private func handleHandoffData(_ data: HandoffData) {
+        // Apply theme if specified
+        if let themeName = data.themeName,
+           let theme = ParchmentTheme.all.first(where: { $0.name == themeName }) {
+            ParchmentTheme.current = theme
+            windowController?.applyTheme(theme)
+        }
+
+        // Open the document
+        openDocument(at: data.documentURL)
+
+        // Restore scroll position after document loads
+        // Use a delay to ensure the document is fully rendered
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.windowController?.restoreScrollPosition(data.scrollPercentage)
+        }
     }
 
     private func setupAppearanceObserver() {
@@ -706,6 +745,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func showError(_ message: String) {
         AlertHelper.showError(message)
+    }
+
+    // MARK: - Keyboard Shortcuts
+
+    /// Applies custom keyboard shortcuts to menu items
+    private func applyCustomShortcuts() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        KeyboardShortcutManager.shared.applyShortcuts(to: mainMenu)
+    }
+
+    /// Called when keyboard shortcuts are changed in preferences
+    @objc private func handleShortcutsChanged() {
+        applyCustomShortcuts()
     }
 
     // MARK: - Path Validation

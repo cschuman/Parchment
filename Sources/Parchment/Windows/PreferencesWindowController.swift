@@ -1,7 +1,7 @@
 import Cocoa
 
 final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
-    
+
     // UI Elements
     private var fontSizeSlider: NSSlider!
     private var fontSizeLabel: NSTextField!
@@ -12,6 +12,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     private var showLineNumbersCheckbox: NSButton!
     private var enableTypewriterCheckbox: NSButton!
     private var previewTextView: NSTextView!
+
+    // Shortcut UI Elements
+    private var shortcutRecorders: [ShortcutAction: ShortcutRecorderView] = [:]
     
     convenience init() {
         let window = NSWindow(
@@ -48,6 +51,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         tabView.addTabViewItem(createGeneralTab())
         tabView.addTabViewItem(createAppearanceTab())
         tabView.addTabViewItem(createEditorTab())
+        tabView.addTabViewItem(createShortcutsTab())
     }
     
     private func createGeneralTab() -> NSTabViewItem {
@@ -172,33 +176,161 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     private func createEditorTab() -> NSTabViewItem {
         let item = NSTabViewItem(identifier: "editor")
         item.label = "Editor"
-        
+
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 580, height: 400))
-        
+
         // Typewriter mode
         enableTypewriterCheckbox = NSButton(checkboxWithTitle: "Enable typewriter scrolling", target: self, action: #selector(toggleTypewriter))
         enableTypewriterCheckbox.frame = NSRect(x: 20, y: 350, width: 300, height: 20)
         view.addSubview(enableTypewriterCheckbox)
-        
+
         let typewriterDesc = NSTextField(wrappingLabelWithString: "Keeps the current line centered while typing")
         typewriterDesc.font = .systemFont(ofSize: 11)
         typewriterDesc.textColor = .secondaryLabelColor
         typewriterDesc.frame = NSRect(x: 40, y: 325, width: 400, height: 20)
         view.addSubview(typewriterDesc)
-        
+
         // Focus mode
         let focusModeCheckbox = NSButton(checkboxWithTitle: "Enable focus mode by default", target: self, action: #selector(toggleFocusMode))
         focusModeCheckbox.frame = NSRect(x: 20, y: 290, width: 300, height: 20)
         view.addSubview(focusModeCheckbox)
-        
+
         let focusDesc = NSTextField(wrappingLabelWithString: "Dims all text except the current paragraph")
         focusDesc.font = .systemFont(ofSize: 11)
         focusDesc.textColor = .secondaryLabelColor
         focusDesc.frame = NSRect(x: 40, y: 265, width: 400, height: 20)
         view.addSubview(focusDesc)
-        
+
         item.view = view
         return item
+    }
+
+    private func createShortcutsTab() -> NSTabViewItem {
+        let item = NSTabViewItem(identifier: "shortcuts")
+        item.label = "Shortcuts"
+
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 580, height: 400))
+
+        // Header
+        let headerLabel = NSTextField(labelWithString: "Keyboard Shortcuts")
+        headerLabel.font = .boldSystemFont(ofSize: 13)
+        headerLabel.frame = NSRect(x: 20, y: 365, width: 200, height: 20)
+        view.addSubview(headerLabel)
+
+        let descLabel = NSTextField(wrappingLabelWithString: "Click on a shortcut field and press your desired key combination. Use Cmd or Ctrl with other keys.")
+        descLabel.font = .systemFont(ofSize: 11)
+        descLabel.textColor = .secondaryLabelColor
+        descLabel.frame = NSRect(x: 20, y: 335, width: 540, height: 30)
+        view.addSubview(descLabel)
+
+        // Scroll view for shortcuts list
+        let scrollView = NSScrollView()
+        scrollView.frame = NSRect(x: 20, y: 50, width: 540, height: 280)
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .bezelBorder
+        scrollView.autohidesScrollers = true
+
+        let clipView = NSClipView()
+        clipView.drawsBackground = true
+        clipView.backgroundColor = .controlBackgroundColor
+
+        let contentView = NSView()
+        let rowHeight: CGFloat = 36
+        let contentHeight = CGFloat(ShortcutAction.allCases.count) * rowHeight + 20
+        contentView.frame = NSRect(x: 0, y: 0, width: 520, height: max(contentHeight, 280))
+
+        // Create rows for each shortcut action
+        var yPosition = contentHeight - rowHeight - 10
+        for action in ShortcutAction.allCases {
+            let row = createShortcutRow(action: action, yPosition: yPosition, width: 520)
+            contentView.addSubview(row)
+            yPosition -= rowHeight
+        }
+
+        clipView.documentView = contentView
+        scrollView.contentView = clipView
+        view.addSubview(scrollView)
+
+        // Reset All button
+        let resetButton = NSButton(title: "Reset All to Defaults", target: self, action: #selector(resetAllShortcuts))
+        resetButton.bezelStyle = .rounded
+        resetButton.frame = NSRect(x: 420, y: 10, width: 140, height: 30)
+        view.addSubview(resetButton)
+
+        item.view = view
+        return item
+    }
+
+    private func createShortcutRow(action: ShortcutAction, yPosition: CGFloat, width: CGFloat) -> NSView {
+        let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 32))
+
+        // Action label
+        let label = NSTextField(labelWithString: action.displayName)
+        label.font = .systemFont(ofSize: 12)
+        label.frame = NSRect(x: 10, y: 6, width: 200, height: 20)
+        row.addSubview(label)
+
+        // Shortcut recorder
+        let recorder = ShortcutRecorderView(frame: NSRect(x: 220, y: 2, width: 150, height: 28))
+        recorder.delegate = self
+        recorder.setShortcut(KeyboardShortcutManager.shared.shortcut(for: action))
+        row.addSubview(recorder)
+
+        // Store reference with action identifier
+        shortcutRecorders[action] = recorder
+
+        // Reset button for individual shortcut
+        let resetButton = NSButton(title: "Reset", target: self, action: #selector(resetSingleShortcut(_:)))
+        resetButton.bezelStyle = .inline
+        resetButton.font = .systemFont(ofSize: 10)
+        resetButton.frame = NSRect(x: 380, y: 4, width: 50, height: 24)
+        resetButton.tag = ShortcutAction.allCases.firstIndex(of: action) ?? 0
+        row.addSubview(resetButton)
+
+        // Default indicator
+        if KeyboardShortcutManager.shared.isCustom(for: action) {
+            let customLabel = NSTextField(labelWithString: "Custom")
+            customLabel.font = .systemFont(ofSize: 9)
+            customLabel.textColor = .systemBlue
+            customLabel.frame = NSRect(x: 435, y: 8, width: 50, height: 16)
+            row.addSubview(customLabel)
+        }
+
+        return row
+    }
+
+    @objc private func resetAllShortcuts() {
+        let alert = NSAlert()
+        alert.messageText = "Reset All Shortcuts"
+        alert.informativeText = "Are you sure you want to reset all keyboard shortcuts to their default values?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            KeyboardShortcutManager.shared.resetAllToDefaults()
+            refreshShortcutsDisplay()
+        }
+    }
+
+    @objc private func resetSingleShortcut(_ sender: NSButton) {
+        let index = sender.tag
+        guard index < ShortcutAction.allCases.count else { return }
+        let action = ShortcutAction.allCases[index]
+
+        KeyboardShortcutManager.shared.resetToDefault(for: action)
+
+        if let recorder = shortcutRecorders[action] {
+            recorder.setShortcut(KeyboardShortcutManager.shared.shortcut(for: action))
+        }
+    }
+
+    private func refreshShortcutsDisplay() {
+        for action in ShortcutAction.allCases {
+            if let recorder = shortcutRecorders[action] {
+                recorder.setShortcut(KeyboardShortcutManager.shared.shortcut(for: action))
+            }
+        }
     }
     
     @objc private func fontSizeChanged(_ sender: NSSlider) {
@@ -303,4 +435,57 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
 
 extension Notification.Name {
     static let preferencesChanged = Notification.Name("preferencesChanged")
+}
+
+// MARK: - ShortcutRecorderViewDelegate
+
+extension PreferencesWindowController: ShortcutRecorderViewDelegate {
+
+    func shortcutRecorderView(_ view: ShortcutRecorderView, didRecordShortcut shortcut: KeyboardShortcut) {
+        // Find which action this recorder belongs to
+        guard let action = shortcutRecorders.first(where: { $0.value === view })?.key else {
+            return
+        }
+
+        // Check for conflicts
+        if let conflicting = KeyboardShortcutManager.shared.conflictingAction(for: shortcut, excluding: action) {
+            let alert = NSAlert()
+            alert.messageText = "Shortcut Conflict"
+            alert.informativeText = "This shortcut is already assigned to \"\(conflicting.displayName)\". Do you want to reassign it?"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Reassign")
+            alert.addButton(withTitle: "Cancel")
+
+            if alert.runModal() == .alertFirstButtonReturn {
+                // Clear the conflicting shortcut
+                let emptyShortcut = KeyboardShortcut(keyCode: 0, modifierFlags: 0, action: conflicting.rawValue)
+                KeyboardShortcutManager.shared.setShortcut(emptyShortcut, for: conflicting)
+                if let conflictingRecorder = shortcutRecorders[conflicting] {
+                    conflictingRecorder.setShortcut(nil)
+                }
+            } else {
+                // Revert to previous shortcut
+                view.setShortcut(KeyboardShortcutManager.shared.shortcut(for: action))
+                return
+            }
+        }
+
+        // Save the new shortcut
+        let newShortcut = KeyboardShortcut(
+            keyCode: shortcut.keyCode,
+            modifierFlags: shortcut.modifierFlags,
+            action: action.rawValue
+        )
+        KeyboardShortcutManager.shared.setShortcut(newShortcut, for: action)
+    }
+
+    func shortcutRecorderViewDidClear(_ view: ShortcutRecorderView) {
+        guard let action = shortcutRecorders.first(where: { $0.value === view })?.key else {
+            return
+        }
+
+        // Set an empty shortcut
+        let emptyShortcut = KeyboardShortcut(keyCode: 0, modifierFlags: 0, action: action.rawValue)
+        KeyboardShortcutManager.shared.setShortcut(emptyShortcut, for: action)
+    }
 }

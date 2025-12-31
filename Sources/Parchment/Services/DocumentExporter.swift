@@ -297,6 +297,14 @@ final class DocumentExporter {
         // Security: Add Content Security Policy meta tag
         let csp = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; script-src 'none';"
 
+        // Generate header/footer using template
+        let headerHTML = options.includeHeader
+            ? options.template.generateHeader(for: document, wordCount: document.metadata.wordCount)
+            : ""
+        let footerHTML = options.includeFooter
+            ? options.template.generateFooter(for: document, wordCount: document.metadata.wordCount, readingTime: document.metadata.estimatedReadingTime)
+            : ""
+
         return """
         <!DOCTYPE html>
         <html lang="en">
@@ -309,11 +317,11 @@ final class DocumentExporter {
         </head>
         <body>
             <div class="container">
-                \(options.includeHeader ? generateHeader(for: document) : "")
+                \(headerHTML)
                 <main>
                     \(bodyHTML)
                 </main>
-                \(options.includeFooter ? generateFooter(for: document, options: options) : "")
+                \(footerHTML)
             </div>
         </body>
         </html>
@@ -321,236 +329,8 @@ final class DocumentExporter {
     }
 
     private func generateCSS(for options: ExportOptions) -> String {
-        // Security: Escape CSS values that come from options
-        let fontFamily = options.fontFamily.replacingOccurrences(of: "\"", with: "\\\"")
-
-        return """
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --font-family: \(fontFamily);
-            --font-size: \(options.fontSize)pt;
-            --line-height: \(options.lineHeight);
-            --text-color: \(options.theme == .light ? "#1d1d1f" : "#f5f5f7");
-            --bg-color: \(options.theme == .light ? "#ffffff" : "#1d1d1f");
-            --code-bg: \(options.theme == .light ? "#f5f5f5" : "#2d2d2f");
-            --border-color: \(options.theme == .light ? "#d2d2d7" : "#424245");
-            --link-color: \(options.theme == .light ? "#0066cc" : "#0a84ff");
-        }
-
-        body {
-            font-family: var(--font-family);
-            font-size: var(--font-size);
-            line-height: var(--line-height);
-            color: var(--text-color);
-            background-color: var(--bg-color);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        .container {
-            max-width: \(options.maxWidth)px;
-            margin: 0 auto;
-            padding: \(options.margins.top)pt \(options.margins.left)pt \(options.margins.bottom)pt \(options.margins.right)pt;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-            font-weight: 600;
-            line-height: 1.25;
-        }
-
-        h1 { font-size: 2.5em; border-bottom: 2px solid var(--border-color); padding-bottom: 0.3em; }
-        h2 { font-size: 2em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.2em; }
-        h3 { font-size: 1.5em; }
-        h4 { font-size: 1.25em; }
-        h5 { font-size: 1.1em; }
-        h6 { font-size: 1em; }
-
-        p { margin-bottom: 1em; }
-
-        code {
-            background-color: var(--code-bg);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: "SF Mono", Monaco, Consolas, monospace;
-            font-size: 0.9em;
-        }
-
-        pre {
-            background-color: var(--code-bg);
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 1em 0;
-        }
-
-        pre code {
-            background-color: transparent;
-            padding: 0;
-            font-size: 0.875em;
-        }
-
-        blockquote {
-            border-left: 4px solid var(--border-color);
-            margin: 1em 0;
-            padding-left: 1em;
-            opacity: 0.8;
-        }
-
-        a {
-            color: var(--link-color);
-            text-decoration: none;
-        }
-
-        a:hover { text-decoration: underline; }
-
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 1em 0;
-        }
-
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 8px 12px;
-            text-align: left;
-        }
-
-        th {
-            background-color: var(--code-bg);
-            font-weight: 600;
-        }
-
-        img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin: 1em 0;
-            border-radius: 8px;
-        }
-
-        hr {
-            border: none;
-            border-top: 2px solid var(--border-color);
-            margin: 2em 0;
-        }
-
-        ul, ol {
-            padding-left: 2em;
-            margin: 1em 0;
-        }
-
-        li { margin: 0.25em 0; }
-
-        .header {
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1em;
-            margin-bottom: 2em;
-        }
-
-        .footer {
-            border-top: 1px solid var(--border-color);
-            padding-top: 1em;
-            margin-top: 2em;
-            font-size: 0.875em;
-            opacity: 0.7;
-        }
-
-        @media print {
-            body {
-                color: black;
-                background-color: white;
-            }
-
-            .container {
-                max-width: none;
-            }
-
-            pre, code {
-                background-color: #f5f5f5;
-            }
-
-            a {
-                color: black;
-                text-decoration: underline;
-            }
-        }
-
-        /* Footnote styles */
-        .footnotes-sep {
-            margin-top: 2em;
-            margin-bottom: 1em;
-        }
-
-        .footnotes {
-            font-size: 0.875em;
-        }
-
-        .footnotes h4 {
-            font-size: 1em;
-            margin-bottom: 0.5em;
-        }
-
-        .footnotes-list {
-            padding-left: 1.5em;
-        }
-
-        .footnote-item {
-            margin: 0.5em 0;
-        }
-
-        .footnote-ref {
-            font-size: 0.75em;
-            vertical-align: super;
-            text-decoration: none;
-            color: var(--link-color);
-        }
-
-        .footnote-backref {
-            text-decoration: none;
-            margin-left: 0.25em;
-        }
-
-        \(Self.escapeHTML(options.customCSS))
-        """
-    }
-
-    private func generateHeader(for document: MarkdownDocument) -> String {
-        // Security: Escape title to prevent XSS
-        let rawTitle = document.url?.deletingPathExtension().lastPathComponent ?? "Untitled"
-        let title = Self.escapeHTML(rawTitle)
-        let date = DateFormatter.localizedString(from: Date(), dateStyle: .long, timeStyle: .none)
-
-        return """
-        <header class="header">
-            <h1>\(title)</h1>
-            <p>\(Self.escapeHTML(date))</p>
-        </header>
-        """
-    }
-
-    private func generateFooter(for document: MarkdownDocument, options: ExportOptions) -> String {
-        var footer = "<footer class=\"footer\">"
-
-        if options.includePageNumbers {
-            footer += "<p>Page <span class=\"page-number\"></span></p>"
-        }
-
-        if options.includeWordCount {
-            // Security: Word count and reading time are integers, safe to interpolate
-            footer += "<p>\(document.metadata.wordCount) words &bull; \(document.metadata.estimatedReadingTime) min read</p>"
-        }
-
-        footer += "<p>Exported from Parchment</p>"
-        footer += "</footer>"
-
-        return footer
+        // Use template CSS if a template is selected
+        return options.template.generateCSS(with: options)
     }
 
     // MARK: - Preview Generation
@@ -644,9 +424,24 @@ struct ExportOptions {
     var includePageNumbers: Bool = true
     var includeWordCount: Bool = true
     var customCSS: String = ""
+    var template: ExportTemplate = .standard
 
     enum Theme {
         case light
         case dark
+    }
+
+    /// Apply template settings to these options
+    mutating func applyTemplate(_ template: ExportTemplate) {
+        self.template = template
+        self.margins = template.margins
+        self.fontSize = template.fontSize
+        self.fontFamily = template.bodyFont
+        self.lineHeight = template.lineHeight
+        self.maxWidth = template.maxWidth
+        self.includePageNumbers = template.showPageNumbers
+        self.includeWordCount = template.showWordCount
+        self.includeHeader = template.headerStyle != .none
+        self.includeFooter = template.footerStyle != .none
     }
 }
