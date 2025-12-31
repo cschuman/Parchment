@@ -282,8 +282,12 @@ final class DocumentExporter {
         document: MarkdownDocument,
         options: ExportOptions
     ) -> String {
-        let parsedDocument = Document(parsing: document.content)
-        let bodyHTML = htmlRenderer.render(parsedDocument)
+        // Process footnotes before parsing
+        let footnoteProcessor = FootnoteProcessor.shared
+        let (processedMarkdown, footnotesHTML) = footnoteProcessor.processForHTML(document.content)
+
+        let parsedDocument = Document(parsing: processedMarkdown)
+        let bodyHTML = htmlRenderer.render(parsedDocument) + footnotesHTML
 
         let css = generateCSS(for: options)
         // Security: Escape title to prevent XSS
@@ -476,6 +480,41 @@ final class DocumentExporter {
                 color: black;
                 text-decoration: underline;
             }
+        }
+
+        /* Footnote styles */
+        .footnotes-sep {
+            margin-top: 2em;
+            margin-bottom: 1em;
+        }
+
+        .footnotes {
+            font-size: 0.875em;
+        }
+
+        .footnotes h4 {
+            font-size: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .footnotes-list {
+            padding-left: 1.5em;
+        }
+
+        .footnote-item {
+            margin: 0.5em 0;
+        }
+
+        .footnote-ref {
+            font-size: 0.75em;
+            vertical-align: super;
+            text-decoration: none;
+            color: var(--link-color);
+        }
+
+        .footnote-backref {
+            text-decoration: none;
+            margin-left: 0.25em;
         }
 
         \(Self.escapeHTML(options.customCSS))

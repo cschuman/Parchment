@@ -222,9 +222,17 @@ graph TD
 
 ## 17. Footnotes
 
-This text has a footnote[^1].
+This text has a simple footnote[^1]. Here is another sentence with a named footnote[^note]. You can also reference the first footnote again[^1] later in the document.
 
-[^1]: This is the footnote content.
+Multiple footnotes can appear in the same paragraph[^2], making it easy to cite[^citation] various sources[^3].
+
+### Footnote Definitions
+
+[^1]: This is the first footnote content with a simple numeric identifier.
+[^note]: Named footnotes use alphanumeric identifiers instead of numbers.
+[^2]: Second footnote with additional details.
+[^3]: Third footnote demonstrating multiple references.
+[^citation]: Citation footnote - Smith, J. (2024). "GFM Footnotes in Practice." Journal of Markdown, 42(1), 12-15.
 
 ## 18. Definition Lists
 

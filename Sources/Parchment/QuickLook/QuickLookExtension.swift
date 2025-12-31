@@ -25,10 +25,14 @@ import Markdown
     }
     
     private func renderMarkdownToHTML(_ markdown: String) -> String {
-        let document = Document(parsing: markdown)
+        // Process footnotes before parsing
+        let footnoteProcessor = FootnoteProcessor.shared
+        let (processedMarkdown, footnotesHTML) = footnoteProcessor.processForHTML(markdown)
+
+        let document = Document(parsing: processedMarkdown)
         let htmlRenderer = HTMLRenderer()
-        let html = htmlRenderer.render(document)
-        
+        let html = htmlRenderer.render(document) + footnotesHTML
+
         return wrapInHTMLTemplate(html)
     }
     
@@ -158,6 +162,41 @@ import Markdown
                 
                 li {
                     margin: 0.25em 0;
+                }
+
+                /* Footnote styles */
+                .footnotes-sep {
+                    margin-top: 2em;
+                    margin-bottom: 1em;
+                }
+
+                .footnotes {
+                    font-size: 0.875em;
+                }
+
+                .footnotes h4 {
+                    font-size: 1em;
+                    margin-bottom: 0.5em;
+                }
+
+                .footnotes-list {
+                    padding-left: 1.5em;
+                }
+
+                .footnote-item {
+                    margin: 0.5em 0;
+                }
+
+                .footnote-ref {
+                    font-size: 0.75em;
+                    vertical-align: super;
+                    text-decoration: none;
+                    color: var(--link-color);
+                }
+
+                .footnote-backref {
+                    text-decoration: none;
+                    margin-left: 0.25em;
                 }
             </style>
         </head>

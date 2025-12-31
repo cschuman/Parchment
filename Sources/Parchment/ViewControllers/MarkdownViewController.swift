@@ -382,17 +382,15 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
             // Track parse time
             let parseStart = CFAbsoluteTimeGetCurrent()
 
-            // Parse with swift-markdown (supports strikethrough, tables, etc.)
-            let parsedDoc = Document(parsing: content)
-
             let parseTime = CFAbsoluteTimeGetCurrent() - parseStart
 
             // Track render time
             let renderStart = CFAbsoluteTimeGetCurrent()
 
             // Use enhanced renderer with current theme
+            // render(markdownText:) handles footnote pre-processing and parsing
             let renderer = EnhancedMarkdownRenderer(theme: currentTheme, zoomLevel: zoom)
-            let attributedString = renderer.render(parsedDoc)
+            let attributedString = renderer.render(markdownText: content)
 
             let renderTime = CFAbsoluteTimeGetCurrent() - renderStart
 
@@ -650,9 +648,9 @@ final class MarkdownViewController: NSViewController, ThemeApplicable {
         guard let document = currentDocument else { return }
 
         // Use new renderer with updated theme
+        // render(markdownText:) handles footnote pre-processing and parsing
         let renderer = EnhancedMarkdownRenderer(theme: theme, zoomLevel: zoomLevel)
-        let parsedDoc = Document(parsing: document.content)
-        let attributedString = renderer.render(parsedDoc)
+        let attributedString = renderer.render(markdownText: document.content)
 
         // Set the new attributed string
         textView?.textStorage?.setAttributedString(attributedString)

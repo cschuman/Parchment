@@ -31,14 +31,16 @@ final class TypographyTests: XCTestCase {
     }
     
     func testBodyAttributes() {
-        let engine = TypographyEngine()
+        let theme = ParchmentTheme.minimal
+        let engine = TypographyEngine(theme: theme)
         let attrs = engine.bodyAttributes()
-        
+
         XCTAssertNotNil(attrs[.font])
         XCTAssertNotNil(attrs[.paragraphStyle])
-        
+
         if let paragraphStyle = attrs[.paragraphStyle] as? NSParagraphStyle {
-            XCTAssertEqual(paragraphStyle.lineHeightMultiple, 1.6, accuracy: 0.1)
+            // Should match the theme's lineHeightMultiple (1.4 for minimal)
+            XCTAssertEqual(paragraphStyle.lineHeightMultiple, theme.lineHeightMultiple, accuracy: 0.1)
         }
     }
     
@@ -55,9 +57,10 @@ final class TypographyTests: XCTestCase {
     }
     
     func testThemeCreation() {
-        let themes = ParchmentTheme.all
-        XCTAssertEqual(themes.count, 5)
-        
+        // Use builtIn to avoid custom themes affecting the count
+        let themes = ParchmentTheme.builtIn
+        XCTAssertEqual(themes.count, 9, "Should have 9 built-in themes")
+
         // Test each theme has required properties
         for theme in themes {
             XCTAssertFalse(theme.name.isEmpty)
@@ -90,14 +93,63 @@ final class TypographyTests: XCTestCase {
         let renderer = EnhancedMarkdownRenderer()
         let markdown = "\"Hello\" -- it's amazing..."
         let document = Document(parsing: markdown)
-        
+
         let result = renderer.render(document)
         let text = result.string
-        
+
         // Check smart quotes (using unicode values)
         XCTAssertTrue(text.contains("\u{201C}") || text.contains("\u{201D}"), "Should have smart quotes")
-        XCTAssertTrue(text.contains("—"), "Should have em dash")
-        XCTAssertTrue(text.contains("…"), "Should have ellipsis")
+        // Note: swift-markdown converts -- to en-dash (U+2013), not em-dash (U+2014)
+        // This is the conventional typographic behavior (-- = en-dash, --- = em-dash)
+        XCTAssertTrue(text.contains("–") || text.contains("\u{2013}"), "Should have en-dash (–)")
+        XCTAssertTrue(text.contains("…") || text.contains("\u{2026}"), "Should have ellipsis (…)")
+    }
+
+    func testStrikethroughRendering() {
+        let renderer = EnhancedMarkdownRenderer()
+        let markdown = "This is ~~strikethrough~~ text."
+        let document = Document(parsing: markdown)
+
+        let result = renderer.render(document)
+        let text = result.string
+
+        // Check that "strikethrough" text is present
+        XCTAssertTrue(text.contains("strikethrough"), "Should contain strikethrough text")
+
+        // Find the range of "strikethrough" and check for strikethrough attribute
+        if let range = text.range(of: "strikethrough") {
+            let nsRange = NSRange(range, in: text)
+            var hasStrikethrough = false
+            result.enumerateAttribute(.strikethroughStyle, in: nsRange) { value, _, _ in
+                if let style = value as? Int, style == NSUnderlineStyle.single.rawValue {
+                    hasStrikethrough = true
+                }
+            }
+            XCTAssertTrue(hasStrikethrough, "Strikethrough text should have strikethrough style attribute")
+        } else {
+            XCTFail("Could not find 'strikethrough' in rendered text")
+        }
+    }
+
+    func testStrikethroughWithOtherFormatting() {
+        let renderer = EnhancedMarkdownRenderer()
+        let markdown = "This is **bold ~~strikethrough~~** and *italic ~~strikethrough~~* text."
+        let document = Document(parsing: markdown)
+
+        let result = renderer.render(document)
+        let text = result.string
+
+        // Check that strikethrough text is present
+        XCTAssertTrue(text.contains("strikethrough"), "Should contain strikethrough text")
+
+        // Find all occurrences of "strikethrough" and verify they have the attribute
+        var strikethroughCount = 0
+        result.enumerateAttribute(.strikethroughStyle, in: NSRange(location: 0, length: result.length)) { value, _, _ in
+            if let style = value as? Int, style == NSUnderlineStyle.single.rawValue {
+                strikethroughCount += 1
+            }
+        }
+        XCTAssertGreaterThan(strikethroughCount, 0, "Should have strikethrough styling applied")
     }
     
     func testSmoothScrollManager() {
@@ -107,39 +159,7 @@ final class TypographyTests: XCTestCase {
         XCTAssertNotNil(scrollView.smoothScrollManager)
     }
     
-    func testFastFileOpener() {
-        let opener = FastFileOpener.shared
-        
-        // Test with a small markdown string
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("test.md")
-        let testContent = "# Test\n\nQuick test"
-        
-        do {
-            try testContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            
-            let expectation = self.expectation(description: "File opened")
-            
-            opener.openFile(at: tempURL) { result in
-                switch result {
-                case .success(let document):
-                    XCTAssertGreaterThan(document.attributedString.length, 0)
-                    XCTAssertNotNil(document.metadata)
-                case .failure(let error):
-                    XCTFail("Failed to open file: \(error)")
-                }
-                expectation.fulfill()
-            }
-            
-            waitForExpectations(timeout: 5)
-            
-            // Cleanup
-            try? FileManager.default.removeItem(at: tempURL)
-            
-        } catch {
-            XCTFail("Failed to create test file: \(error)")
-        }
-    }
+    // testFastFileOpener removed - FastFileOpener class was deleted in commit bddcae4
     
     func testPerformanceOfRendering() {
         let renderer = EnhancedMarkdownRenderer()

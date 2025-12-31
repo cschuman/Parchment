@@ -57,6 +57,10 @@ final class EnhancedMarkdownRenderer {
         var listDepth = 0
         var listCounters: [Int] = []
 
+        // Footnote state
+        var footnoteDefinitions: [String: FootnoteProcessor.FootnoteDefinition] = [:]
+        var footnoteOrder: [String] = []
+
         init(baseAttributes: [NSAttributedString.Key: Any]) {
             self.currentAttributes = baseAttributes
         }
@@ -83,6 +87,33 @@ final class EnhancedMarkdownRenderer {
         return NSAttributedString(attributedString: context.attributedString)
     }
 
+    /// Render markdown from raw text with footnote support
+    /// This method pre-processes the text to extract footnotes before parsing
+    public func render(markdownText: String) -> NSAttributedString {
+        // Pre-process footnotes
+        let processor = FootnoteProcessor.shared
+        let processed = processor.process(markdownText)
+
+        // Parse the cleaned markdown
+        let document = Document(parsing: processed.text, options: [.parseBlockDirectives, .parseSymbolLinks])
+
+        // Create isolated context for this render operation
+        let context = RenderContext(baseAttributes: typographyEngine.bodyAttributes())
+
+        // Store footnote data in context
+        context.footnoteDefinitions = processed.definitions
+        context.footnoteOrder = processed.referenceOrder
+
+        for child in document.children {
+            visit(child, context: context)
+        }
+
+        // Apply final polish (including footnotes section)
+        applyFinalFormatting(context: context)
+
+        return NSAttributedString(attributedString: context.attributedString)
+    }
+
     private func visit(_ node: any Markup, context: RenderContext) {
         switch node {
         case let heading as Heading:
@@ -95,6 +126,8 @@ final class EnhancedMarkdownRenderer {
             visitStrong(strong, context: context)
         case let emphasis as Emphasis:
             visitEmphasis(emphasis, context: context)
+        case let strikethrough as Strikethrough:
+            visitStrikethrough(strikethrough, context: context)
         case let code as InlineCode:
             visitInlineCode(code, context: context)
         case let codeBlock as CodeBlock:
@@ -151,6 +184,13 @@ final class EnhancedMarkdownRenderer {
         // Replace emoji shortcodes
         smartText = replaceEmojiShortcodes(in: smartText)
 
+        // Process footnote references if we have footnote data
+        if !context.footnoteDefinitions.isEmpty {
+            let processed = processFootnoteReferences(in: smartText, context: context)
+            context.attributedString.append(processed)
+            return
+        }
+
         // Check for math expressions
         let mathExpressions = MathRenderer.shared.findMathExpressions(in: smartText)
 
@@ -162,6 +202,73 @@ final class EnhancedMarkdownRenderer {
             let processed = MathRenderer.shared.processText(smartText, baseAttributes: context.currentAttributes, theme: theme)
             context.attributedString.append(processed)
         }
+    }
+
+    /// Process footnote references in text and replace with superscript numbers
+    private func processFootnoteReferences(in text: String, context: RenderContext) -> NSAttributedString {
+        let processor = FootnoteProcessor.shared
+        let references = processor.findReferences(in: text)
+
+        if references.isEmpty {
+            // No footnotes, check for math expressions
+            let mathExpressions = MathRenderer.shared.findMathExpressions(in: text)
+            if mathExpressions.isEmpty {
+                return NSAttributedString(string: text, attributes: context.currentAttributes)
+            } else {
+                return MathRenderer.shared.processText(text, baseAttributes: context.currentAttributes, theme: theme)
+            }
+        }
+
+        let result = NSMutableAttributedString()
+        var lastEnd = text.startIndex
+
+        for ref in references {
+            // Add text before this reference
+            if lastEnd < ref.range.lowerBound {
+                let beforeText = String(text[lastEnd..<ref.range.lowerBound])
+
+                // Check for math in the preceding text
+                let mathExpressions = MathRenderer.shared.findMathExpressions(in: beforeText)
+                if mathExpressions.isEmpty {
+                    result.append(NSAttributedString(string: beforeText, attributes: context.currentAttributes))
+                } else {
+                    result.append(MathRenderer.shared.processText(beforeText, baseAttributes: context.currentAttributes, theme: theme))
+                }
+            }
+
+            // Render footnote reference if it has a corresponding definition
+            if context.footnoteDefinitions[ref.identifier] != nil {
+                let displayNumber = processor.displayNumber(for: ref.identifier, in: context.footnoteOrder)
+                let baseFont = context.currentAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: theme.baseFontSize)
+                let refAttrString = processor.renderReference(
+                    number: displayNumber,
+                    identifier: ref.identifier,
+                    theme: theme,
+                    baseFont: baseFont
+                )
+                result.append(refAttrString)
+            } else {
+                // Unknown footnote reference - render as plain text
+                result.append(NSAttributedString(string: String(text[ref.range]), attributes: context.currentAttributes))
+            }
+
+            lastEnd = ref.range.upperBound
+        }
+
+        // Add remaining text
+        if lastEnd < text.endIndex {
+            let afterText = String(text[lastEnd...])
+
+            // Check for math in the trailing text
+            let mathExpressions = MathRenderer.shared.findMathExpressions(in: afterText)
+            if mathExpressions.isEmpty {
+                result.append(NSAttributedString(string: afterText, attributes: context.currentAttributes))
+            } else {
+                result.append(MathRenderer.shared.processText(afterText, baseAttributes: context.currentAttributes, theme: theme))
+            }
+        }
+
+        return result
     }
 
     private func replaceEmojiShortcodes(in text: String) -> String {
@@ -197,6 +304,18 @@ final class EnhancedMarkdownRenderer {
         }
 
         context.currentAttributes[.font] = savedFont
+    }
+
+    private func visitStrikethrough(_ strikethrough: Strikethrough, context: RenderContext) {
+        context.currentAttributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+        context.currentAttributes[.strikethroughColor] = context.currentAttributes[.foregroundColor] ?? theme.textColor
+
+        for child in strikethrough.children {
+            visit(child, context: context)
+        }
+
+        context.currentAttributes.removeValue(forKey: .strikethroughStyle)
+        context.currentAttributes.removeValue(forKey: .strikethroughColor)
     }
 
     private func visitInlineCode(_ code: InlineCode, context: RenderContext) {
@@ -468,6 +587,18 @@ final class EnhancedMarkdownRenderer {
         // Remove any trailing whitespace
         while context.attributedString.string.hasSuffix("\n\n\n") {
             context.attributedString.deleteCharacters(in: NSRange(location: context.attributedString.length - 1, length: 1))
+        }
+
+        // Append footnotes section if we have any
+        if !context.footnoteOrder.isEmpty {
+            let processor = FootnoteProcessor.shared
+            let footnotesSection = processor.renderFootnotesSection(
+                definitions: context.footnoteDefinitions,
+                order: context.footnoteOrder,
+                theme: theme,
+                zoomLevel: zoomLevel
+            )
+            context.attributedString.append(footnotesSection)
         }
 
         // Ensure proper spacing throughout
